@@ -4,7 +4,7 @@
  *
  * Copyright (C) 2013 by Paul Warren <pwarren@pwarren.id.au>
 
- * With parts taken from:
+ * Parts taken from:
  *  rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
  *  http://openfortress.org/cryptodoc/random/noise-filter.c
  *    by Rick van Rein <rick@openfortress.nl>
