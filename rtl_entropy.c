@@ -3,8 +3,11 @@
  * high quality entropy source.
  *
  * Copyright (C) 2013 by Paul Warren <pwarren@pwarren.id.au>
- * With parts taken from rtl_test
- * Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
+
+ * With parts taken from:
+ *  rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
+ *  http://openfortress.org/cryptodoc/random/noise-filter.c
+ *    by Rick van Rein <rick@openfortress.nl>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -50,6 +53,8 @@
 
 #define MHZ(x)	((x)*1000*1000)
 
+#define DEFAULT_FREQUENCY MHZ(70)
+
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 
@@ -61,7 +66,7 @@ void usage(void)
 		"\t[-s samplerate (default: 2048000 Hz)]\n"
 		"\t[-d device_index (default: 0)]\n"
 		"\t[-b output_block_size (default: 16 * 16384)]\n"
-		"\t[-S force sync output (default: async)]\n");
+		"\t[-f set frequency to listen (default: 54MHz )]\n");
 	exit(1);
 }
 
@@ -86,128 +91,135 @@ static void sighandler(int signum)
 }
 #endif
 
-    
-  
 int main(int argc, char **argv)
 {
 #ifndef _WIN32
   struct sigaction sigact;
 #endif
-	int n_read;
-	int r, opt, i;
-	uint8_t *buffer;
-	uint32_t dev_index = 0;
-	uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
-	uint32_t out_block_size = DEFAULT_BUF_LENGTH;
-	int device_count;
-
-	while ((opt = getopt(argc, argv, "d:s:b:tpS::")) != -1) {
-		switch (opt) {
-		case 'd':
-			dev_index = atoi(optarg);
-			break;
-		case 's':
-			samp_rate = (uint32_t)atof(optarg);
-			break;
-		case 'b':
-			out_block_size = (uint32_t)atof(optarg);
-			break;
-		default:
-			usage();
-			break;
-		}
-	}
-
-	if(out_block_size < MINIMAL_BUF_LENGTH ||
-	   out_block_size > MAXIMAL_BUF_LENGTH ){
-		fprintf(stderr,
-			"Output block size wrong value, falling back to default\n");
-		fprintf(stderr,
-			"Minimal length: %u\n", MINIMAL_BUF_LENGTH);
-		fprintf(stderr,
-			"Maximal length: %u\n", MAXIMAL_BUF_LENGTH);
-		out_block_size = DEFAULT_BUF_LENGTH;
-	}
-
-	buffer = malloc(out_block_size * sizeof(uint8_t));
-
-	device_count = rtlsdr_get_device_count();
-	if (!device_count) {
-		fprintf(stderr, "No supported devices found.\n");
-		exit(1);
-	}
-
-	fprintf(stderr, "Found %d device(s):\n", device_count);
-	for (i = 0; i < device_count; i++)
-		fprintf(stderr, "  %d:  %s\n", i, rtlsdr_get_device_name(i));
-	fprintf(stderr, "\n");
-
-	fprintf(stderr, "Using device %d: %s\n",
-		dev_index,
-		rtlsdr_get_device_name(dev_index));
-
-	r = rtlsdr_open(&dev, dev_index);
-	if (r < 0) {
-		fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
-		exit(1);
-	}
+  int n_read;
+  int r, opt, i;
+  uint8_t *buffer;
+  uint32_t dev_index = 0;
+  uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
+  uint32_t out_block_size = DEFAULT_BUF_LENGTH;
+  uint32_t frequency = DEFAULT_FREQUENCY;
+  int device_count;
+  uint8_t ch, ch2;
+  
+  while ((opt = getopt(argc, argv, "d:s:b:f:")) != -1) {
+    switch (opt) {
+    case 'd':
+      dev_index = atoi(optarg);
+      break;
+    case 's':
+      samp_rate = (uint32_t)atof(optarg);
+      break;
+    case 'b':
+      out_block_size = (uint32_t)atof(optarg);
+      break;
+    case 'f':
+      frequency = (uint32_t)atof(optarg);
+      break;
+    default:
+      usage();
+      break;
+    }
+  }
+  
+  if(out_block_size < MINIMAL_BUF_LENGTH ||
+     out_block_size > MAXIMAL_BUF_LENGTH ){
+    fprintf(stderr,
+	    "Output block size wrong value, falling back to default\n");
+    fprintf(stderr,
+	    "Minimal length: %u\n", MINIMAL_BUF_LENGTH);
+    fprintf(stderr,
+	    "Maximal length: %u\n", MAXIMAL_BUF_LENGTH);
+    out_block_size = DEFAULT_BUF_LENGTH;
+  }
+  
+  buffer = malloc(out_block_size * sizeof(uint8_t));
+  
+  device_count = rtlsdr_get_device_count();
+  if (!device_count) {
+    fprintf(stderr, "No supported devices found.\n");
+    exit(1);
+  }
+  
+  fprintf(stderr, "Found %d device(s):\n", device_count);
+  for (i = 0; i < device_count; i++)
+    fprintf(stderr, "  %d:  %s\n", i, rtlsdr_get_device_name(i));
+  fprintf(stderr, "\n");
+  
+  fprintf(stderr, "Using device %d: %s\n",
+	  dev_index,
+	  rtlsdr_get_device_name(dev_index));
+  
+  r = rtlsdr_open(&dev, dev_index);
+  if (r < 0) {
+    fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
+    exit(1);
+  }
 #ifndef _WIN32
-	sigact.sa_handler = sighandler;
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_flags = 0;
-	sigaction(SIGINT, &sigact, NULL);
-	sigaction(SIGTERM, &sigact, NULL);
-	sigaction(SIGQUIT, &sigact, NULL);
-	sigaction(SIGPIPE, &sigact, NULL);
+  sigact.sa_handler = sighandler;
+  sigemptyset(&sigact.sa_mask);
+  sigact.sa_flags = 0;
+  sigaction(SIGINT, &sigact, NULL);
+  sigaction(SIGTERM, &sigact, NULL);
+  sigaction(SIGQUIT, &sigact, NULL);
+  sigaction(SIGPIPE, &sigact, NULL);
 #else
-	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
+  SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
 #endif
-
-	/* Set the sample rate */
-	r = rtlsdr_set_sample_rate(dev, samp_rate);
-	if (r < 0)
-		fprintf(stderr, "WARNING: Failed to set sample rate.\n");
-
-	/* Reset endpoint before we start reading from it (mandatory) */
-	r = rtlsdr_reset_buffer(dev);
-	if (r < 0)
-	  fprintf(stderr, "WARNING: Failed to reset buffers.\n");
-	    
-	fprintf(stderr, "Reading samples in sync mode...\n");
-	while (!do_exit) {
-	  r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
-	  if (r < 0) {
-	    fprintf(stderr, "WARNING: sync read failed.\n");
-	    break;
-	  }
-	  
-	  if ((uint32_t)n_read < out_block_size) {
-	    fprintf(stderr, "Short read, samples lost, exiting!\n");
-	    break;
-	  }
-	}
-	// Do randomness tests on the buffer
-
-
-	// if it's Ok
-
-	// cast to char and print
-	fwrite(&buffer, sizeof(uint8_t), n_read, stdout);
-	
-	
-	// else tell stderr the quality wasn't good enough.
-	// and change frequency if it happens again?
-	
-
-
-	if (do_exit) {
-	  fprintf(stderr, "\nUser cancel, exiting...\n");
-	}
-	else
-	  fprintf(stderr, "\nLibrary error %d, exiting...\n", r);
-	
-	rtlsdr_close(dev);
-	free (buffer);
-	
-	return r >= 0 ? r : -r;
+  
+  /* Set the sample rate */
+  r = rtlsdr_set_sample_rate(dev, samp_rate);
+  if (r < 0)
+    fprintf(stderr, "WARNING: Failed to set sample rate.\n");
+  
+  /* Reset endpoint before we start reading from it (mandatory) */
+  r = rtlsdr_reset_buffer(dev);
+  if (r < 0)
+    fprintf(stderr, "WARNING: Failed to reset buffers.\n");
+  
+  /* Set start frequency */
+  r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
+  
+  fprintf(stderr, "Reading samples in sync mode...\n");
+  while (!do_exit) {
+    r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
+    
+    if (r < 0) {
+      fprintf(stderr, "WARNING: sync read failed.\n");
+      break;
+    }
+    
+    if ((uint32_t)n_read < out_block_size) {
+      fprintf(stderr, "Short read, samples lost, exiting!\n");
+      break;
+    }
+    
+    // for each pair of bits in the buffer, do a fairness test
+    
+    for (i=0;i<n_read * sizeof(uint8_t);i+=2) {
+      ch = buffer[i] & (uint8_t)0x01;
+      ch2 = buffer[i+1] & (uint8_t)0x01;
+      if (ch != ch2) {
+	// the fairness test passed!
+	// store the bit in our bitbuffer
+	// if our bitbuffer is full 
+	// print it
+	// reset it, and the counter
+	fprintf(stdout, "%d", ch);
+      }
+    }
+  }
+  if (do_exit) {
+    fprintf(stderr, "\nUser cancel, exiting...\n");
+  }
+  else
+    fprintf(stderr, "\nLibrary error %d, exiting...\n", r);
+  
+  rtlsdr_close(dev);
+  free (buffer);
+  return 0;
 }
