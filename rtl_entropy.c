@@ -105,6 +105,8 @@ int main(int argc, char **argv)
   uint32_t frequency = DEFAULT_FREQUENCY;
   int device_count;
   uint8_t ch, ch2;
+  char bitbuffer = 0;
+  int bitcounter = 0;
   
   while ((opt = getopt(argc, argv, "d:s:b:f:")) != -1) {
     switch (opt) {
@@ -182,6 +184,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "WARNING: Failed to reset buffers.\n");
   
   /* Set start frequency */
+  fprintf(stderr, "Setting Frequency to %d\n", frequency);
   r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
   
   fprintf(stderr, "Reading samples in sync mode...\n");
@@ -206,10 +209,22 @@ int main(int argc, char **argv)
       if (ch != ch2) {
 	// the fairness test passed!
 	// store the bit in our bitbuffer
+	if (ch) {
+	  bitbuffer |= 1 << bitcounter;
+	  bitcounter++;
+	} else {
+	  bitbuffer &= ~(1 << bitcounter);
+	  bitcounter ++;
+	}
+
 	// if our bitbuffer is full 
-	// print it
-	// reset it, and the counter
-	fprintf(stdout, "%d", ch);
+	if (bitcounter == 8) {
+	  // print it
+	  fprintf(stdout,"%c",bitbuffer);
+	  // reset it, and the counter
+	  bitbuffer = 0;
+	  bitcounter = 0;
+	}
       }
     }
   }
