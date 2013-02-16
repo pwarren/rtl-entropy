@@ -30,6 +30,13 @@ Next I'll look at using the rng-tools library to do the tests in the program, ra
 Then I'll look at how I can get the rng-tools entropy gathering daemon to accept data from us!
 
 
+Notes from ##rtlsdr
+Keenerd
+ * Need a mixing step xor fresh random bytes by xoring with the old value
+ * snd-egd has a good implementation
+ * maybe a hash as well?
+ * add Kaminsky debiasing to my von neumann debiasing
+
 Credits
 -------
 rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
