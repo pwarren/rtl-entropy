@@ -11,7 +11,7 @@
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 2 of the License, or
+ * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
@@ -60,27 +60,30 @@ static rtlsdr_dev_t *dev = NULL;
 
 void usage(void)
 {
-	fprintf(stderr,
-		"rtl_test, a benchmark tool for RTL2832 based DVB-T receivers\n\n"
-		"Usage:\n"
-		"\t[-s samplerate (default: 2048000 Hz)]\n"
-		"\t[-d device_index (default: 0)]\n"
-		"\t[-b output_block_size (default: 16 * 16384)]\n"
-		"\t[-f set frequency to listen (default: 54MHz )]\n");
-	exit(1);
+  fprintf(stderr,
+	  "rtl_test, a benchmark tool for RTL2832 based DVB-T receivers\n\n"
+	  "Usage:\n"
+	  "\t[-s samplerate (default: 2048000 Hz)]\n"
+	  "\t[-d device_index (default: 0)]\n"
+	  "\t[-b output_block_size (default: 16 * 16384)]\n"
+	  "\t[-f set frequency to listen (default: 54MHz )]\n"
+	  //	  "\t[-g daemonise and add to system entropy pool (linux only)\n"
+	  );
+  
+  exit(1);
 }
 
 #ifdef _WIN32
 BOOL WINAPI
 sighandler(int signum)
 {
-	if (CTRL_C_EVENT == signum) {
-		fprintf(stderr, "Signal caught, exiting!\n");
-		do_exit = 1;
-		rtlsdr_cancel_async(dev);
-		return TRUE;
-	}
-	return FALSE;
+  if (CTRL_C_EVENT == signum) {
+    fprintf(stderr, "Signal caught, exiting!\n");
+    do_exit = 1;
+    rtlsdr_cancel_async(dev);
+    return TRUE;
+  }
+  return FALSE;
 }
 #else
 static void sighandler(int signum)
@@ -107,17 +110,14 @@ int main(int argc, char **argv)
   uint8_t ch, ch2;
   char bitbuffer = 0;
   int bitcounter = 0;
-  
-  while ((opt = getopt(argc, argv, "d:s:b:f:")) != -1) {
+ 
+  while ((opt = getopt(argc, argv, "d:s:f:")) != -1) {
     switch (opt) {
     case 'd':
       dev_index = atoi(optarg);
       break;
     case 's':
       samp_rate = (uint32_t)atof(optarg);
-      break;
-    case 'b':
-      out_block_size = (uint32_t)atof(optarg);
       break;
     case 'f':
       frequency = (uint32_t)atof(optarg);
@@ -128,16 +128,7 @@ int main(int argc, char **argv)
     }
   }
   
-  if(out_block_size < MINIMAL_BUF_LENGTH ||
-     out_block_size > MAXIMAL_BUF_LENGTH ){
-    fprintf(stderr,
-	    "Output block size wrong value, falling back to default\n");
-    fprintf(stderr,
-	    "Minimal length: %u\n", MINIMAL_BUF_LENGTH);
-    fprintf(stderr,
-	    "Maximal length: %u\n", MAXIMAL_BUF_LENGTH);
-    out_block_size = DEFAULT_BUF_LENGTH;
-  }
+  out_block_size = DEFAULT_BUF_LENGTH;
   
   buffer = malloc(out_block_size * sizeof(uint8_t));
   
@@ -218,7 +209,7 @@ int main(int argc, char **argv)
 	}
 
 	// if our bitbuffer is full 
-	if (bitcounter == 8) {
+	if (bitcounter >= sizeof(bitbuffer) * 8) { //bits per byte
 	  // print it
 	  fprintf(stdout,"%c",bitbuffer);
 	  // reset it, and the counter
@@ -238,3 +229,24 @@ int main(int argc, char **argv)
   free (buffer);
   return 0;
 }
+
+
+// Fragment to do the IOCTL on linux to /dev/random
+// From https://github.com/rfinnie/twuewand/blob/master/src/rndaddentropy.c
+/*
+ int randfd;
+  if((randfd = open("/dev/random", O_WRONLY)) < 0) {
+    perror("/dev/random");
+    return(1);
+  }
+
+  int count;
+  while((count = fread(entropy.buf, 1, sizeof(entropy.buf), stdin)) > 0) {
+    entropy.entropy_count = count * 8;
+    entropy.buf_size = count;
+    if(ioctl(randfd, RNDADDENTROPY, &entropy) < 0) {
+      perror("RNDADDENTROPY");
+      return(1);
+    }
+  }
+*/
