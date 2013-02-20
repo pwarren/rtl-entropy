@@ -192,22 +192,24 @@ int main(int argc, char **argv)
       break;
     }
     
-    // for each pair of bits in the buffer, do a fairness test
-    
-    for (i=0;i<n_read * sizeof(uint8_t);i+=2) {
-      ch = buffer[i] & (uint8_t)0x01;
-      ch2 = buffer[i+1] & (uint8_t)0x01;
+    //for each byte in the buffer
+    for (i=0; i < n_read * sizeof(buffer[0]); i++) {
+      // pick LSB and LSB+1 as they'll vary the most
+      // yes, it throws away some entropy, but the MSB of the 
+      // and most bits of noise 
+      // will be the same, (noise floor)
+      
+      ch = (buffer[i] >> 1) & 0x01;
+      ch2 = (buffer[i] >> 2) & 0x01;
       if (ch != ch2) {
-	// the fairness test passed!
-	// store the bit in our bitbuffer
 	if (ch) {
+	  // store a 1 in our bitbuffer
 	  bitbuffer |= 1 << bitcounter;
-	  bitcounter++;
 	} else {
+	  // store a 0
 	  bitbuffer &= ~(1 << bitcounter);
-	  bitcounter ++;
 	}
-
+	bitcounter ++;
 	// if our bitbuffer is full 
 	if (bitcounter >= sizeof(bitbuffer) * 8) { //bits per byte
 	  // print it
@@ -215,6 +217,7 @@ int main(int argc, char **argv)
 	  // reset it, and the counter
 	  bitbuffer = 0;
 	  bitcounter = 0;
+	  //  }
 	}
       }
     }
