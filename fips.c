@@ -24,8 +24,6 @@
 #error Invalid or missing autoconf build environment
 #endif
 
-#include "rng-tools-config.h"
-
 #include <unistd.h>
 #include <string.h>
 

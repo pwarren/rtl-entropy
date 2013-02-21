@@ -51,8 +51,8 @@ rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
 
 Uses code from:
 
- rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de> 
+  * rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de> http://sdr.osmocom.org/trac/wiki/rtl-sdr
 
- and
+  * rng-test-4. Copyright (C) 2001 Philipp Rumpf http://sourceforge.net/projects/gkernel/
 
- some ideas from [http://openfortress.org/cryptodoc/random/noise-filter.c] by Rick van Rein <rick@openfortress.nl>
+  * http://openfortress.org/cryptodoc/random/noise-filter.c by Rick van Rein <rick@openfortress.nl>
