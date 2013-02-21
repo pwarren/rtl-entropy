@@ -65,7 +65,6 @@ void usage(void)
 	  "Usage:\n"
 	  "\t[-s samplerate (default: 2048000 Hz)]\n"
 	  "\t[-d device_index (default: 0)]\n"
-	  "\t[-b output_block_size (default: 16 * 16384)]\n"
 	  "\t[-f set frequency to listen (default: 54MHz )]\n"
 	  //	  "\t[-g daemonise and add to system entropy pool (linux only)\n"
 	  );
@@ -108,7 +107,7 @@ int main(int argc, char **argv)
   uint32_t frequency = DEFAULT_FREQUENCY;
   int device_count;
   uint8_t ch, ch2;
-  char bitbuffer = 0;
+  unsigned int bitbuffer = 0;
   int bitcounter = 0;
  
   while ((opt = getopt(argc, argv, "d:s:f:")) != -1) {
@@ -213,7 +212,7 @@ int main(int argc, char **argv)
 	// if our bitbuffer is full 
 	if (bitcounter >= sizeof(bitbuffer) * 8) { //bits per byte
 	  // print it
-	  fprintf(stdout,"%c",bitbuffer);
+	  fwrite(&bitbuffer,sizeof(bitbuffer),1,stdout);
 	  // reset it, and the counter
 	  bitbuffer = 0;
 	  bitcounter = 0;
