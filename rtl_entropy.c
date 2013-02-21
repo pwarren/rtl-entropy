@@ -77,7 +77,6 @@ BOOL WINAPI
 sighandler(int signum)
 {
   if (CTRL_C_EVENT == signum) {
-    fprintf(stderr, "Signal caught, exiting!\n");
     do_exit = 1;
     rtlsdr_cancel_async(dev);
     return TRUE;
@@ -87,7 +86,6 @@ sighandler(int signum)
 #else
 static void sighandler(int signum)
 {
-  fprintf(stderr, "Signal caught, exiting!\n");
   do_exit = 1;
   rtlsdr_cancel_async(dev);
 }
@@ -127,7 +125,7 @@ int main(int argc, char **argv)
     }
   }
   
-  out_block_size = DEFAULT_BUF_LENGTH;
+  out_block_size = MAXIMAL_BUF_LENGTH;
   
   buffer = malloc(out_block_size * sizeof(uint8_t));
   
