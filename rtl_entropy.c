@@ -199,8 +199,8 @@ int main(int argc, char **argv)
       // and most bits of noise 
       // will be the same, (noise floor)
       
-      ch = (buffer[i] >> 1) & 0x01;
-      ch2 = (buffer[i] >> 2) & 0x01;
+      ch = (buffer[i]) & 0x01;
+      ch2 = (buffer[i] >> 1) & 0x01;
       if (ch != ch2) {
 	if (ch) {
 	  // store a 1 in our bitbuffer
