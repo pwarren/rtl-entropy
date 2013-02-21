@@ -107,7 +107,10 @@ int main(int argc, char **argv)
   uint8_t ch, ch2;
   unsigned int bitbuffer = 0;
   int bitcounter = 0;
- 
+  
+  int gains[100];
+  int count;
+  
   while ((opt = getopt(argc, argv, "d:s:f:")) != -1) {
     switch (opt) {
     case 'd':
@@ -149,6 +152,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
     exit(1);
   }
+  
 #ifndef _WIN32
   sigact.sa_handler = sighandler;
   sigemptyset(&sigact.sa_mask);
@@ -174,18 +178,29 @@ int main(int argc, char **argv)
   /* Set start frequency */
   fprintf(stderr, "Setting Frequency to %d\n", frequency);
   r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
+    
+  /* set gain to max */
+  count = rtlsdr_get_tuner_gains(dev, gains);
+  fprintf(stderr, "Setting gain to %d\n", gains[count-1]);
+  r = rtlsdr_set_tuner_gain_mode(dev, 1);
+  if (r < 0)
+    fprintf(stderr, "WARNING: Couldn't set gain mode to manual\n");
+  
+  r = rtlsdr_set_tuner_gain(dev, gains[count-1]);
+  if (r < 0)
+    fprintf(stderr, "WARNING: Failed to set gain\n");
   
   fprintf(stderr, "Reading samples in sync mode...\n");
   while (!do_exit) {
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
     
     if (r < 0) {
-      fprintf(stderr, "WARNING: sync read failed.\n");
+      fprintf(stderr, "ERROR: sync read failed.\n");
       break;
     }
     
     if ((uint32_t)n_read < out_block_size) {
-      fprintf(stderr, "Short read, samples lost, exiting!\n");
+      fprintf(stderr, "ERROR: Short read, samples lost, exiting!\n");
       break;
     }
     
