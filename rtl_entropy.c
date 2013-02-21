@@ -101,13 +101,13 @@ int main(int argc, char **argv)
   uint8_t *buffer;
   uint32_t dev_index = 0;
   uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
-  uint32_t out_block_size = DEFAULT_BUF_LENGTH;
+  uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
   uint32_t frequency = DEFAULT_FREQUENCY;
   int device_count;
-  uint8_t ch, ch2;
-  unsigned int bitbuffer = 0;
+  int ch, ch2;
+  uint8_t bitbuffer[250] = {0};
   int bitcounter = 0;
-  
+  int buffercounter = 0;
   int gains[100];
   int count;
   
@@ -127,9 +127,7 @@ int main(int argc, char **argv)
       break;
     }
   }
-  
-  out_block_size = MAXIMAL_BUF_LENGTH;
-  
+    
   buffer = malloc(out_block_size * sizeof(uint8_t));
   
   device_count = rtlsdr_get_device_count();
@@ -204,33 +202,35 @@ int main(int argc, char **argv)
       break;
     }
     
-    //for each byte in the buffer
+    // for each byte in the read buffer
+    // pick LSB and LSB+1 as they'll vary the most
+    // debias and store in the write buffer till it's full
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
-      // pick LSB and LSB+1 as they'll vary the most
-      // yes, it throws away some entropy, but the MSB of the 
-      // and most bits of noise 
-      // will be the same, (noise floor)
-      
       ch = (buffer[i]) & 0x01;
       ch2 = (buffer[i] >> 1) & 0x01;
       if (ch != ch2) {
 	if (ch) {
 	  // store a 1 in our bitbuffer
-	  bitbuffer |= 1 << bitcounter;
+	  bitbuffer[buffercounter] |= 1 << bitcounter;
 	} else {
-	  // store a 0
-	  bitbuffer &= ~(1 << bitcounter);
+	  // store a 0, yay for bitwise C magic (aka "I've no idea how this works!")
+	  bitbuffer[buffercounter] &= ~(1 << bitcounter);
 	}
-	bitcounter ++;
-	// if our bitbuffer is full 
-	if (bitcounter >= sizeof(bitbuffer) * 8) { //bits per byte
-	  // print it
-	  fwrite(&bitbuffer,sizeof(bitbuffer),1,stdout);
-	  // reset it, and the counter
-	  bitbuffer = 0;
-	  bitcounter = 0;
-	  //  }
-	}
+	bitcounter++;
+      }
+      // if our bitbuffer is full 
+      if (bitcounter >= sizeof(bitbuffer[0]) * 8) { //bits per byte
+	buffercounter++;
+	bitcounter = 0;
+      }
+      if (buffercounter >= 250) {
+	// We have 2000 bits of entropy
+	// Can now send it to FIPS!
+	// print it for now
+	fwrite(&bitbuffer,sizeof(bitbuffer[0]),250,stdout);
+	// reset it, and the counter
+	memset(bitbuffer,0,sizeof(bitbuffer));
+	buffercounter = 0;
       }
     }
   }
