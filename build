@@ -1,1 +1,0 @@
-gcc rtl_entropy.c -Wall -O2 -o rtl_entropy -lm `pkg-config --cflags --libs librtlsdr`

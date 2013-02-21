@@ -44,12 +44,14 @@
 #endif
 
 #include "rtl-sdr.h"
+#include "fips.h"
 
 #define DEFAULT_SAMPLE_RATE		2048000
 #define DEFAULT_ASYNC_BUF_NUMBER	32
 #define DEFAULT_BUF_LENGTH		(16 * 16384)
 #define MINIMAL_BUF_LENGTH		512
 #define MAXIMAL_BUF_LENGTH		(256 * 16384)
+#define BUFFER_SIZE                     2500 // need 2500 bits for FIPS
 
 #define MHZ(x)	((x)*1000*1000)
 
@@ -57,6 +59,7 @@
 
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
+static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 
 void usage(void)
 {
@@ -91,13 +94,14 @@ static void sighandler(int signum)
 }
 #endif
 
+
 int main(int argc, char **argv)
 {
 #ifndef _WIN32
   struct sigaction sigact;
 #endif
   int n_read;
-  int r, opt, i;
+  int r, opt, i, j;
   uint8_t *buffer;
   uint32_t dev_index = 0;
   uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
@@ -105,11 +109,11 @@ int main(int argc, char **argv)
   uint32_t frequency = DEFAULT_FREQUENCY;
   int device_count;
   int ch, ch2;
-  uint8_t bitbuffer[250] = {0};
+  unsigned char bitbuffer[BUFFER_SIZE] = {0};
   int bitcounter = 0;
   int buffercounter = 0;
   int gains[100];
-  int count;
+  int count, fips_result;
   
   while ((opt = getopt(argc, argv, "d:s:f:")) != -1) {
     switch (opt) {
@@ -179,7 +183,7 @@ int main(int argc, char **argv)
     
   /* set gain to max */
   count = rtlsdr_get_tuner_gains(dev, gains);
-  fprintf(stderr, "Setting gain to %d\n", gains[count-1]);
+  fprintf(stderr, "Setting gain to %.1f\n", (float)(gains[count-1]/10));
   r = rtlsdr_set_tuner_gain_mode(dev, 1);
   if (r < 0)
     fprintf(stderr, "WARNING: Couldn't set gain mode to manual\n");
@@ -187,7 +191,10 @@ int main(int argc, char **argv)
   r = rtlsdr_set_tuner_gain(dev, gains[count-1]);
   if (r < 0)
     fprintf(stderr, "WARNING: Failed to set gain\n");
-  
+
+  fprintf(stderr, "Doing FIPS init\n");
+  fips_init(&fipsctx, (int)0);
+
   fprintf(stderr, "Reading samples in sync mode...\n");
   while (!do_exit) {
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
@@ -215,19 +222,30 @@ int main(int argc, char **argv)
 	} else {
 	  // store a 0, yay for bitwise C magic (aka "I've no idea how this works!")
 	  bitbuffer[buffercounter] &= ~(1 << bitcounter);
+	  
 	}
 	bitcounter++;
       }
-      // if our bitbuffer is full 
+      // if our byte is full 
       if (bitcounter >= sizeof(bitbuffer[0]) * 8) { //bits per byte
 	buffercounter++;
 	bitcounter = 0;
       }
-      if (buffercounter >= 250) {
-	// We have 2000 bits of entropy
+      // if our buffer is full
+      if (buffercounter > BUFFER_SIZE) {
+	// We have 2500 bytes of entropy
 	// Can now send it to FIPS!
-	// print it for now
-	fwrite(&bitbuffer,sizeof(bitbuffer[0]),250,stdout);
+	fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
+	if (!fips_result) {
+	  // hooray it's proper random data
+	  fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,stdout);	 
+	} else {
+	  for (j=0; j< N_FIPS_TESTS; j++) {
+	    if (fips_result & fips_test_mask[j]) {
+	      fprintf(stderr, "Failed: %s\n", fips_test_names[j]);
+	    }
+	  }
+	}
 	// reset it, and the counter
 	memset(bitbuffer,0,sizeof(bitbuffer));
 	buffercounter = 0;
