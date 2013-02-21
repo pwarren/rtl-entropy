@@ -5,7 +5,7 @@ An entropy generator using rtl-sdr.
 
 The idea is to sample atmospheric noise at some starting frequency, run it through some quality tests, and if it passes muster, pass it on. If it's failing the quality tests, jump frequencies and try again. When the quality is good enough, add it to the system entropy pool via /dev/random. 
 
-These features aren't implemented yet, currently it does some simplistic debiasing and outputs to STDOUT for testing via rngtest from rng-tools.
+Not all of this is implemented yet! Currently, it does the FIPS tests internally, and prints to stdout the bits that passed.
 
 If you're serious about the cryptographic security of your entropy source, you should probably short the antenna, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
 
@@ -17,11 +17,9 @@ Dependencies
 Build
 -----
 
-* ./build 
+make 
 
-or
-
-* gcc rtl_entropy.c -o rtl_entropy -lm `pkg-config libs librtlsdr`
+I've not got in to CMake yet, so please send me a pull request with a cmake implementation!
 
 Usage
 -----
@@ -32,15 +30,11 @@ apt-get install rng-tools
 
 To Do
 -----
-Next I'll look at using the rng-tools library to do the tests in the program, rather than piping to rngtest.
 
-Then I'll look at how I can get the rng-tools entropy gathering daemon to accept data from us!
+* Implement daemon mode that adds entropy to the system pool.
 
-
-Notes from ##rtlsdr
-
-Keenerd
- * Need a mixing step xor fresh random bytes by xoring with the old value
+From Keenerd on the osmocom-sdr mailing list.
+ * Need a mixing step xor fresh random bytes by with the old data
  * snd-egd has a good implementation
  * maybe a hash as well?
  * add Kaminsky debiasing to my von neumann debiasing
