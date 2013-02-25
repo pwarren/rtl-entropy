@@ -94,6 +94,26 @@ static void sighandler(int signum)
 }
 #endif
 
+double atofs(char* f)
+/* standard suffixes */
+{
+  char* chop;
+  double suff = 1.0;
+  chop = malloc((strlen(f)+1)*sizeof(char));
+  strncpy(chop, f, strlen(f)-1);
+  switch (f[strlen(f)-1]) {
+  case 'G':
+    suff *= 1e3;
+  case 'M':
+    suff *= 1e3;
+  case 'k':
+    suff *= 1e3;
+    suff *= atof(chop);}
+  free(chop);
+  if (suff != 1.0) {
+    return suff;}
+  return atof(f);
+}
 
 int main(int argc, char **argv)
 {
@@ -121,10 +141,10 @@ int main(int argc, char **argv)
       dev_index = atoi(optarg);
       break;
     case 's':
-      samp_rate = (uint32_t)atof(optarg);
+      samp_rate = (uint32_t)atofs(optarg);
       break;
     case 'f':
-      frequency = (uint32_t)atof(optarg);
+      frequency = (uint32_t)atofs(optarg);
       break;
     default:
       usage();

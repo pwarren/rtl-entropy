@@ -25,8 +25,11 @@ Usage
 -----
 apt-get install rng-tools
 
-./rtl_entropy | rngtest -p > high_entropy.bin
+./rtl_entropy > high_entropy.bin
+Then use the entropy you've collected however you like!
 
+./rtl_entropy -s 2.4M -f 101.5M | rngtest -c 512 -p > high_entropy.bin
+Set the sample rate to 2.5 Mega Samples/s and the listening frequency to 101.5MHz (a station where I live, slows down entropy collection!)
 
 To Do
 -----
