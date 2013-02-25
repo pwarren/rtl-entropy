@@ -233,7 +233,7 @@ int main(int argc, char **argv)
     // pick LSB and LSB+1 as they'll vary the most
     // debias and store in the write buffer till it's full
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
-      for (j=0; j < 6; j+= 2) {
+      for (j=0; j < 4; j+= 2) {
 	ch = (buffer[i] >> j) & 0x01;
 	ch2 = (buffer[i] >> j+1) & 0x01;
 	if (ch != ch2) {
