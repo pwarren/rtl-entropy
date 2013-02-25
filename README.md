@@ -23,13 +23,16 @@ I've not got in to CMake yet, so please send me a pull request with a cmake impl
 
 Usage
 -----
-apt-get install rng-tools
 
 ./rtl_entropy > high_entropy.bin
-Then use the entropy you've collected however you like!
+and press CTRL+C to stop, and do whatever you like with it.
 
-./rtl_entropy -s 2.4M -f 101.5M | rngtest -c 512 -p > high_entropy.bin
-Set the sample rate to 2.5 Mega Samples/s and the listening frequency to 101.5MHz (a station where I live, slows down entropy collection!)
+or
+
+./rtl_entropy -s 2.4M -f 101.5M | rngtest -c 1280 -p > high_entropy.bin
+
+to set the sample rate to 2.4Msamples/s and the frequency to tune to as 101.5 MHz, piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
+
 
 To Do
 -----
