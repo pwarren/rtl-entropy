@@ -233,42 +233,44 @@ int main(int argc, char **argv)
     // pick LSB and LSB+1 as they'll vary the most
     // debias and store in the write buffer till it's full
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
-      ch = (buffer[i]) & 0x01;
-      ch2 = (buffer[i] >> 1) & 0x01;
-      if (ch != ch2) {
-	if (ch) {
-	  // store a 1 in our bitbuffer
-	  bitbuffer[buffercounter] |= 1 << bitcounter;
-	} else {
-	  // store a 0, yay for bitwise C magic (aka "I've no idea how this works!")
-	  bitbuffer[buffercounter] &= ~(1 << bitcounter);
-	  
+      for (j=0; j < 6; j+= 2) {
+	ch = (buffer[i] >> j) & 0x01;
+	ch2 = (buffer[i] >> j+1) & 0x01;
+	if (ch != ch2) {
+	  if (ch) {
+	    // store a 1 in our bitbuffer
+	    bitbuffer[buffercounter] |= 1 << bitcounter;
+	  } else {
+	    // store a 0, yay for bitwise C magic (aka "I've no idea how this works!")
+	    bitbuffer[buffercounter] &= ~(1 << bitcounter);
+	    
+	  }
+	  bitcounter++;
 	}
-	bitcounter++;
-      }
-      // if our byte is full 
-      if (bitcounter >= sizeof(bitbuffer[0]) * 8) { //bits per byte
-	buffercounter++;
-	bitcounter = 0;
-      }
-      // if our buffer is full
-      if (buffercounter > BUFFER_SIZE) {
-	// We have 2500 bytes of entropy
-	// Can now send it to FIPS!
-	fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
-	if (!fips_result) {
-	  // hooray it's proper random data
-	  fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,stdout);	 
-	} else {
-	  for (j=0; j< N_FIPS_TESTS; j++) {
-	    if (fips_result & fips_test_mask[j]) {
-	      fprintf(stderr, "Failed: %s\n", fips_test_names[j]);
+	// if our byte is full 
+	if (bitcounter >= sizeof(bitbuffer[0]) * 8) { //bits per byte
+	  buffercounter++;
+	  bitcounter = 0;
+	}
+	// if our buffer is full
+	if (buffercounter > BUFFER_SIZE) {
+	  // We have 2500 bytes of entropy
+	  // Can now send it to FIPS!
+	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
+	  if (!fips_result) {
+	    // hooray it's proper random data
+	    fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,stdout);	 
+	  } else {
+	    for (j=0; j< N_FIPS_TESTS; j++) {
+	      if (fips_result & fips_test_mask[j]) {
+		fprintf(stderr, "Failed: %s\n", fips_test_names[j]);
+	      }
 	    }
 	  }
+	  // reset it, and the counter
+	  memset(bitbuffer,0,sizeof(bitbuffer));
+	  buffercounter = 0;
 	}
-	// reset it, and the counter
-	memset(bitbuffer,0,sizeof(bitbuffer));
-	buffercounter = 0;
       }
     }
   }
