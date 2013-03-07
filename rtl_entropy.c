@@ -231,7 +231,10 @@ int main(int argc, char **argv)
     }
     
     // for each byte in the read buffer
-    // pick LSB and LSB+1 as they'll vary the most
+    // pick least significant 4 bits
+    // good compromise between output throughput, and entropy quality
+    // get less FIPS fails with 2 bits, but half the througput
+    // get lots of FIPS fails and only a slight throughput increase with 6 bits
     // debias and store in the write buffer till it's full
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
       for (j=0; j < 4; j+= 2) {
