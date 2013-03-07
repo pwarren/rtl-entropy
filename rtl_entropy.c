@@ -121,7 +121,8 @@ int main(int argc, char **argv)
   struct sigaction sigact;
 #endif
   int n_read;
-  int r, opt, i, j;
+  int r, opt;
+  unsigned int i, j;
   uint8_t *buffer;
   uint32_t dev_index = 0;
   uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
@@ -130,7 +131,7 @@ int main(int argc, char **argv)
   int device_count;
   int ch, ch2;
   unsigned char bitbuffer[BUFFER_SIZE] = {0};
-  int bitcounter = 0;
+  unsigned int bitcounter = 0;
   int buffercounter = 0;
   int gains[100];
   int count, fips_result;
@@ -161,7 +162,7 @@ int main(int argc, char **argv)
   }
   
   fprintf(stderr, "Found %d device(s):\n", device_count);
-  for (i = 0; i < device_count; i++)
+  for (i = 0; i <(unsigned int)device_count; i++)
     fprintf(stderr, "  %d:  %s\n", i, rtlsdr_get_device_name(i));
   fprintf(stderr, "\n");
   
@@ -235,15 +236,15 @@ int main(int argc, char **argv)
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
       for (j=0; j < 4; j+= 2) {
 	ch = (buffer[i] >> j) & 0x01;
-	ch2 = (buffer[i] >> j+1) & 0x01;
+	ch2 = (buffer[i] >> (j+1)) & 0x01;
 	if (ch != ch2) {
 	  if (ch) {
 	    // store a 1 in our bitbuffer
 	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	  } else {
+	    //} else {
+	    // the buffer will already be all zeroes, as it's set to that when full, and when initialised.
 	    // store a 0, yay for bitwise C magic (aka "I've no idea how this works!")
-	    bitbuffer[buffercounter] &= ~(1 << bitcounter);
-	    
+	    //bitbuffer[buffercounter] &= ~(1 << bitcounter);
 	  }
 	  bitcounter++;
 	}

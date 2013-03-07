@@ -1,8 +1,8 @@
 CC=gcc
-CFLAGS=-I. -O2 -lm
+CFLAGS=-I. -O2 -Wall -Wextra
 DEPS = fips.h
 OBJ = rtl_entropy.o fips.o
-LDFLAGS += `pkg-config --libs librtlsdr`
+LDFLAGS += -lm `pkg-config --libs librtlsdr`
 
 %.o: %.c %(DEPS)
 	$(CC) $(CFLAGS) -c -o $@ $<
