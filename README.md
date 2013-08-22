@@ -19,7 +19,7 @@ Build
 
 make 
 
-I've not got in to CMake yet, so please send me a pull request with a cmake implementation!
+Assumes you've got the rtl-sdr libraries and gcc installed.
 
 Usage
 -----
@@ -32,6 +32,10 @@ or
 ./rtl_entropy -s 2.4M -f 101.5M | rngtest -c 1280 -p > high_entropy.bin
 
 to set the sample rate to 2.4Msamples/s and the frequency to tune to as 101.5 MHz, piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
+
+You should be able to use rndaddentropy from [twuwand](http://github.com/rfinnie/twuewand)
+
+./rtl_entropy -s 2.4M -f 101.5M | rndaddentropy
 
 
 To Do
