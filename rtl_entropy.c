@@ -64,7 +64,7 @@ static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 void usage(void)
 {
   fprintf(stderr,
-	  "rtl_test, a benchmark tool for RTL2832 based DVB-T receivers\n\n"
+	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage:\n"
 	  "\t[-s samplerate (default: 2048000 Hz)]\n"
 	  "\t[-d device_index (default: 0)]\n"
@@ -235,6 +235,8 @@ int main(int argc, char **argv)
     // good compromise between output throughput, and entropy quality
     // get less FIPS fails with 2 bits, but half the througput
     // get lots of FIPS fails and only a slight throughput increase with 6 bits
+    
+
     // debias and store in the write buffer till it's full
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
       for (j=0; j < 4; j+= 2) {
@@ -244,8 +246,8 @@ int main(int argc, char **argv)
 	  if (ch) {
 	    // store a 1 in our bitbuffer
 	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	    //} else {
 	    // the buffer will already be all zeroes, as it's set to that when full, and when initialised.
+	    //} else {
 	    // store a 0, yay for bitwise C magic (aka "I've no idea how this works!")
 	    //bitbuffer[buffercounter] &= ~(1 << bitcounter);
 	  }
