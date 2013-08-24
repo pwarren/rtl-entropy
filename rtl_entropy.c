@@ -28,7 +28,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
+#include <syslog.h>
 
 #ifdef __APPLE__
 #include <sys/time.h>
@@ -167,7 +167,7 @@ int main(int argc, char **argv)
       redirect_output = 1;
       output = fopen(optarg,"w");
       if (output == NULL) {
-	fprintf(stderr,"Couldn't open output file. Exiting.\n");
+	perror("Couldn't open output file");
 	return 1;
       }
       break;
@@ -265,7 +265,6 @@ int main(int argc, char **argv)
     // get less FIPS fails with 2 bits, but half the througput
     // get lots of FIPS fails and only a slight throughput increase with 6 bits
     
-
     // debias and store in the write buffer till it's full
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
       for (j=0; j < 4; j+= 2) {
