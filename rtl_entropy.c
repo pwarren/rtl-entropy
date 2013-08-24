@@ -43,10 +43,6 @@
 #include "getopt/getopt.h"
 #endif
 
-#include <sys/fcntl.h>
-#include <sys/ioctl.h>
-#include <linux/random.h>
-
 #include "rtl-sdr.h"
 #include "fips.h"
 
@@ -75,10 +71,9 @@ void usage(void)
 	  "\t[-s samplerate (default: 2048000 Hz)]\n"
 	  "\t[-d device_index (default: 0)]\n"
 	  "\t[-f set frequency to listen (default: 54MHz )]\n"
-
-	  "\t[-g daemonise and add to system entropy pool (linux only)\n"
+	  "\t[-g daemonise and add to system entropy pool (linux only)]\n"
+	  "\t[-o output file] (default: STDOUT)\n"
 	  );
-  
   exit(1);
 }
 
@@ -143,13 +138,18 @@ int main(int argc, char **argv)
   int gains[100];
   int count, fips_result;
 
-  struct {
+  // File handling stuff
+  FILE *output = NULL;
+  int redirect_output = 0;
+
+  /*  struct {
     int entropy_count;
     int buf_size;
     char buf[1024];
   } entropy;
-  
-  while ((opt = getopt(argc, argv, "d:s:f:")) != -1) {
+  */
+
+  while ((opt = getopt(argc, argv, "d:s:f:g:o:")) != -1) {
     switch (opt) {
     case 'd':
       dev_index = atoi(optarg);
@@ -162,19 +162,30 @@ int main(int argc, char **argv)
       break;
     case 'g':
       isdaemon = 1;
-      if((randfd = open("/dev/random", O_WRONLY)) < 0) {
-	perror("/dev/random");
-	return(1);
-      }
       // TODO: Insert code here to daemonize
+    case 'o':
+      redirect_output = 1;
+      output = fopen(optarg,"w");
+      if (output == NULL) {
+	fprintf(stderr,"Couldn't open output file. Exiting.\n");
+	return 1;
+      }
+      break;
     default:
+      printf("In Default!\n");
       usage();
       break;
     }
   }
+  
+  if (redirect_output) {
+    fclose(stdout);
+  } else {
+    output = stdout;
+  }
+  
     
   buffer = malloc(out_block_size * sizeof(uint8_t));
-  
   device_count = rtlsdr_get_device_count();
   if (!device_count) {
     fprintf(stderr, "No supported devices found.\n");
@@ -239,12 +250,10 @@ int main(int argc, char **argv)
   fprintf(stderr, "Reading samples in sync mode...\n");
   while (!do_exit) {
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
-    
     if (r < 0) {
       fprintf(stderr, "ERROR: sync read failed.\n");
       break;
     }
-    
     if ((uint32_t)n_read < out_block_size) {
       fprintf(stderr, "ERROR: Short read, samples lost, exiting!\n");
       break;
@@ -285,20 +294,7 @@ int main(int argc, char **argv)
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
 	  if (!fips_result) {
 	    // hooray it's proper random data
-	    // if we're in daemon mode, spit it out fto the kernel
-	    if (isdaemon) {
-	      int count;
-	      while ((count = fread(entropy.buf, 1, sizeof(entropy.buf), &bitbuffer)) > ) {
-		entropy.entropy_count = count * 8;
-		entropy.buf_size = count;
-		if(ioctl(randfd, RNDADDENTROPY, &entropy) < 0) {
-		  perror("RNDADDENTROPY");
-		  return(1);
-		}
-	      }
-	    } else {
-	      fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,stdout);	 
-	    }
+	    fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,output);	 
 	  } else {
 	    // FIPS test failed
 	    for (j=0; j< N_FIPS_TESTS; j++) {
@@ -322,26 +318,8 @@ int main(int argc, char **argv)
   
   rtlsdr_close(dev);
   free (buffer);
+  fclose(output);
   return 0;
 }
 
 
-// Fragment to do the IOCTL on linux to /dev/random
-// From https://github.com/rfinnie/twuewand/blob/master/src/rndaddentropy.c
-/*
- int randfd;
-  if((randfd = open("/dev/random", O_WRONLY)) < 0) {
-    perror("/dev/random");
-    return(1);
-  }
-
-  int count;
-  while((count = fread(entropy.buf, 1, sizeof(entropy.buf), stdin)) > 0) {
-    entropy.entropy_count = count * 8;
-    entropy.buf_size = count;
-    if(ioctl(randfd, RNDADDENTROPY, &entropy) < 0) {
-      perror("RNDADDENTROPY");
-      return(1);
-    }
-  }
-*/
