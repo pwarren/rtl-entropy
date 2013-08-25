@@ -8,6 +8,7 @@
  *  rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
  *  http://openfortress.org/cryptodoc/random/noise-filter.c
  *    by Rick van Rein <rick@openfortress.nl>
+ *  snd-egd Copyright (C) 2008-2010 Nicholas J. Kain <nicholas aatt kain.us>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,6 +30,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <sys/capability.h>
+#include <sys/types.h>
+#include <sys/prctl.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 #ifdef __APPLE__
 #include <sys/time.h>
@@ -36,31 +42,25 @@
 #include <time.h>
 #endif
 
-#ifndef _WIN32
-#include <unistd.h>
-#else
-#include <Windows.h>
-#include "getopt/getopt.h"
-#endif
-
 #include "rtl-sdr.h"
 #include "fips.h"
+#include "util.h"
+#include "log.h"
+#include "defines.h"
 
+#define MHZ(x)	((x)*1000*1000)
 #define DEFAULT_SAMPLE_RATE		2048000
 #define DEFAULT_ASYNC_BUF_NUMBER	32
 #define DEFAULT_BUF_LENGTH		(16 * 16384)
 #define MINIMAL_BUF_LENGTH		512
 #define MAXIMAL_BUF_LENGTH		(256 * 16384)
 #define BUFFER_SIZE                     2500 // need 2500 bits for FIPS
-
-#define MHZ(x)	((x)*1000*1000)
-
 #define DEFAULT_FREQUENCY MHZ(70)
 
+// Globals.
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
-int randfd;
 int isdaemon = 0;
 
 void usage(void)
@@ -68,33 +68,23 @@ void usage(void)
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage:\n"
-	  "\t[-s samplerate (default: 2048000 Hz)]\n"
+	  "\t[-b daemonize]\n"
 	  "\t[-d device_index (default: 0)]\n"
 	  "\t[-f set frequency to listen (default: 54MHz )]\n"
-	  "\t[-g daemonise and add to system entropy pool (linux only)]\n"
-	  "\t[-o output file] (default: STDOUT)\n"
+	  "\t[-s samplerate (default: 2048000 Hz)]\n"
+	  "\t[-o output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b)))\n"
+	  "\t[-p pid file] (default: /var/run/rtl_entropy.pid)\n"
+	  "\t[-u user to run as] (default: rtl_entropy)\n"
+	  "\t[-g group to run as] (default: rtl_entropy)\n"
 	  );
   exit(1);
 }
 
-#ifdef _WIN32
-BOOL WINAPI
-sighandler(int signum)
-{
-  if (CTRL_C_EVENT == signum) {
-    do_exit = 1;
-    rtlsdr_cancel_async(dev);
-    return TRUE;
-  }
-  return FALSE;
-}
-#else
 static void sighandler(int signum)
 {
   do_exit = 1;
   rtlsdr_cancel_async(dev);
 }
-#endif
 
 double atofs(char* f)
 /* standard suffixes */
@@ -117,11 +107,25 @@ double atofs(char* f)
   return atof(f);
 }
 
+static void drop_privs(int uid, int gid)
+{
+  cap_t caps;
+  prctl(PR_SET_KEEPCAPS, 1);
+  caps = cap_from_text("cap_sys_admin=ep");
+  if (!caps)
+    suicide("cap_from_text failed");
+  if (setgroups(0, NULL) == -1)
+    suicide("setgroups failed");
+  if (setegid(gid) == -1 || seteuid(uid) == -1)
+    suicide("dropping privs failed");
+  if (cap_set_proc(caps) == -1)
+    suicide("cap_set_proc failed");
+  cap_free(caps);
+}
+
 int main(int argc, char **argv)
 {
-#ifndef _WIN32
   struct sigaction sigact;
-#endif
   int n_read;
   int r, opt;
   unsigned int i, j;
@@ -138,31 +142,38 @@ int main(int argc, char **argv)
   int gains[100];
   int count, fips_result;
 
+  //daemon
+  int uid = -1, gid = -1;
+
   // File handling stuff
   FILE *output = NULL;
   int redirect_output = 0;
+  
+  fprintf(stderr,"Doing optargs\n");
 
-  /*  struct {
-    int entropy_count;
-    int buf_size;
-    char buf[1024];
-  } entropy;
-  */
-
-  while ((opt = getopt(argc, argv, "d:s:f:g:o:")) != -1) {
+  while ((opt = getopt(argc, argv, "bd:f:g:o:p:s:u:h")) != -1) {
     switch (opt) {
+    case 'b':
+      isdaemon = 1;
+      break;
+
     case 'd':
       dev_index = atoi(optarg);
       break;
-    case 's':
-      samp_rate = (uint32_t)atofs(optarg);
-      break;
+
     case 'f':
       frequency = (uint32_t)atofs(optarg);
       break;
+
     case 'g':
-      isdaemon = 1;
-      // TODO: Insert code here to daemonize
+      gid = parse_group(optarg);
+      redirect_output =1;
+      break;
+
+    case 'h':
+      usage();
+      break;
+            
     case 'o':
       redirect_output = 1;
       output = fopen(optarg,"w");
@@ -170,20 +181,50 @@ int main(int argc, char **argv)
 	perror("Couldn't open output file");
 	return 1;
       }
+      fclose(stdout);
       break;
+
+    case 'p':
+      pidfile_path = strdup(optarg);
+      break;
+
+    case 's':
+      samp_rate = (uint32_t)atofs(optarg);
+      break;
+    
+    case 'u':
+      uid = parse_user(optarg, &gid);
+      break;
+
     default:
-      printf("In Default!\n");
       usage();
       break;
     }
   }
-  
-  if (redirect_output) {
-    fclose(stdout);
-  } else {
-    output = stdout;
+
+
+  fprintf(stderr,"isdaemon: %d\n", isdaemon);
+
+  if (isdaemon) {
+    if (!redirect_output) {
+      output = fopen(DEFAULT_OUT_FILE,"w");
+      redirect_output = 1;
+      if (output == NULL) {
+	perror("Couldn't open output file");
+	return 1;
+      }
+      fclose(stdout);
+    }
+    daemonize();
   }
   
+  if (!redirect_output) {
+    output = stdout;
+  }
+
+  if (uid != -1 && gid != -1)
+    drop_privs(uid, gid);
+
     
   buffer = malloc(out_block_size * sizeof(uint8_t));
   device_count = rtlsdr_get_device_count();
@@ -206,8 +247,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
     exit(1);
   }
-  
-#ifndef _WIN32
+
   sigact.sa_handler = sighandler;
   sigemptyset(&sigact.sa_mask);
   sigact.sa_flags = 0;
@@ -215,9 +255,7 @@ int main(int argc, char **argv)
   sigaction(SIGTERM, &sigact, NULL);
   sigaction(SIGQUIT, &sigact, NULL);
   sigaction(SIGPIPE, &sigact, NULL);
-#else
-  SetConsoleCtrlHandler( (PHANDLER_ROUTINE) sighandler, TRUE );
-#endif
+
   
   /* Set the sample rate */
   r = rtlsdr_set_sample_rate(dev, samp_rate);
