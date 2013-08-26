@@ -35,6 +35,7 @@
 #include <sys/prctl.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <grp.h>
 
 #ifdef __APPLE__
 #include <sys/time.h>
@@ -61,6 +62,7 @@
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
+
 int isdaemon = 0;
 
 void usage(void)
@@ -149,12 +151,15 @@ int main(int argc, char **argv)
   FILE *output = NULL;
   int redirect_output = 0;
   
-  fprintf(stderr,"Doing optargs\n");
-
-  while ((opt = getopt(argc, argv, "bd:f:g:o:p:s:u:h")) != -1) {
+  log_line(LOG_DEBUG, "Doing getopt()\n");
+  
+  opt = getopt(argc, argv, "d:f:g:o:p:s:u:hb");
+  while (opt != -1) {
+    log_line(LOG_DEBUG, "before switch (opt)");
     switch (opt) {
     case 'b':
       isdaemon = 1;
+      redirect_output=1;
       break;
 
     case 'd':
@@ -167,7 +172,6 @@ int main(int argc, char **argv)
 
     case 'g':
       gid = parse_group(optarg);
-      redirect_output =1;
       break;
 
     case 'h':
@@ -181,7 +185,7 @@ int main(int argc, char **argv)
 	perror("Couldn't open output file");
 	return 1;
       }
-      fclose(stdout);
+      //fclose(stdout);
       break;
 
     case 'p':
@@ -200,10 +204,12 @@ int main(int argc, char **argv)
       usage();
       break;
     }
+    log_line(LOG_DEBUG,"After switch(opt)");
+    opt = getopt(argc, argv, "d:f:g:o:p:s:u:hb");
   }
 
-
-  fprintf(stderr,"isdaemon: %d\n", isdaemon);
+  log_line(LOG_DEBUG,"getopt() Done!\n");
+  log_line(LOG_DEBUG, "isdaemon: %d\n", isdaemon);
 
   if (isdaemon) {
     if (!redirect_output) {
@@ -222,8 +228,8 @@ int main(int argc, char **argv)
     output = stdout;
   }
 
-  if (uid != -1 && gid != -1)
-    drop_privs(uid, gid);
+  //  if (uid != -1 && gid != -1)
+  //    drop_privs(uid, gid);
 
     
   buffer = malloc(out_block_size * sizeof(uint8_t));

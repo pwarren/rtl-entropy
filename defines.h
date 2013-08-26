@@ -19,3 +19,7 @@
 
 #define DEFAULT_PID_FILE "/var/run/rtl_entropy.pid"
 #define DEFAULT_OUT_FILE "/var/run/rtl_entropy.fifo"
+
+
+#define GFLAGS_DETACH 0
+#define GFLAGS_DEBUG 1

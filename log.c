@@ -24,9 +24,9 @@
 #include "defines.h"
 #include "log.h"
 
-/* global logging flags */
-char gflags_detach = 1;
-char gflags_debug = 0;
+/* global logging flags from defins.h */
+char gflags_detach = GFLAGS_DETACH;
+char gflags_debug = GFLAGS_DEBUG;
 
 void log_line(int logtype, char *format, ...) {
     va_list argp;
@@ -37,7 +37,7 @@ void log_line(int logtype, char *format, ...) {
         return;
 
     if (gflags_detach) {
-        openlog("snd-egd", LOG_PID, LOG_DAEMON);
+        openlog("rtl-entropy", LOG_PID, LOG_DAEMON);
         va_start(argp, format);
         vsyslog(logtype | LOG_DAEMON, format, argp);
         va_end(argp);
@@ -58,7 +58,7 @@ void suicide(char *format, ...) {
         goto out;
 
     if (gflags_detach) {
-        openlog("snd-egd", LOG_PID, LOG_DAEMON);
+        openlog("rtl-entropy", LOG_PID, LOG_DAEMON);
         va_start(argp, format);
         vsyslog(LOG_ERR | LOG_DAEMON, format, argp);
         va_end(argp);
