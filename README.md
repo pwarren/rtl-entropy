@@ -3,11 +3,11 @@ rtl-entropy
 
 An entropy generator using rtl-sdr.
 
-The idea is to sample atmospheric noise at some starting frequency, run it through some quality tests, and if it passes muster, pass it on. If it's failing the quality tests, jump frequencies and try again. When the quality is good enough, add it to the system entropy pool via /dev/random. 
-
-Not all of this is implemented yet! Currently, it does the FIPS tests internally, and prints to stdout the bits that passed.
+The idea is to sample atmospheric noise, run it throught the FIPS 140-2 tests, if it passes write it out to the specified output. 
 
 If you're serious about the cryptographic security of your entropy source, you should probably short the antenna, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
+
+Neither of these are 'Quantum Random' sources
 
 Dependencies
 ------------
@@ -41,16 +41,25 @@ You should be able to use rndaddentropy from [twuwand](http://github.com/rfinnie
 To Do
 -----
 
-* Implement daemon mode that adds entropy to the system pool.
-
-From Keenerd on the osmocom-sdr mailing list.
+- Further research and consultation with security experts is needed on:
  * Need a mixing step xor fresh random bytes by with the old data
- * snd-egd has a good implementation
  * maybe a hash as well?
  * add Kaminsky debiasing to my von neumann debiasing
 
+- Code Review
+
+Thanks to Keenerd on the osmocom-sdr mailing list.
+
+
+Done!
+-----
+
+* Implement daemon mode that adds entropy to the system pool.
+
+
 Credits
 -------
+
 rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
 
 Uses code from:
@@ -60,3 +69,5 @@ Uses code from:
   * rng-test-4. Copyright (C) 2001 Philipp Rumpf http://sourceforge.net/projects/gkernel/
 
   * http://openfortress.org/cryptodoc/random/noise-filter.c by Rick van Rein <rick@openfortress.nl>
+
+  * snd-egd http://code.google.com/p/snd-egd/
