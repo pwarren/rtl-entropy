@@ -63,8 +63,6 @@ static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 
-int isdaemon = 0;
-
 void usage(void)
 {
   fprintf(stderr,
@@ -151,72 +149,65 @@ int main(int argc, char **argv)
   FILE *output = NULL;
   int redirect_output = 0;
   
-  log_line(LOG_DEBUG, "Doing getopt()\n");
-  
   opt = getopt(argc, argv, "d:f:g:o:p:s:u:hb");
   while (opt != -1) {
-    log_line(LOG_DEBUG, "before switch (opt)");
     switch (opt) {
     case 'b':
-      isdaemon = 1;
+      gflags_detach = 1;
       redirect_output=1;
       break;
-
+      
     case 'd':
       dev_index = atoi(optarg);
       break;
-
+      
     case 'f':
       frequency = (uint32_t)atofs(optarg);
       break;
-
+      
     case 'g':
       gid = parse_group(optarg);
       break;
-
+      
     case 'h':
       usage();
       break;
-            
+      
     case 'o':
       redirect_output = 1;
       output = fopen(optarg,"w");
       if (output == NULL) {
-	perror("Couldn't open output file");
+	suicide("Couldn't open output file");
 	return 1;
       }
-      //fclose(stdout);
+      fclose(stdout);
       break;
-
+      
     case 'p':
       pidfile_path = strdup(optarg);
       break;
-
+      
     case 's':
       samp_rate = (uint32_t)atofs(optarg);
       break;
-    
+      
     case 'u':
       uid = parse_user(optarg, &gid);
       break;
-
+      
     default:
       usage();
       break;
     }
-    log_line(LOG_DEBUG,"After switch(opt)");
     opt = getopt(argc, argv, "d:f:g:o:p:s:u:hb");
   }
-
-  log_line(LOG_DEBUG,"getopt() Done!\n");
-  log_line(LOG_DEBUG, "isdaemon: %d\n", isdaemon);
-
-  if (isdaemon) {
+  
+  if (gflags_detach) {
     if (!redirect_output) {
       output = fopen(DEFAULT_OUT_FILE,"w");
       redirect_output = 1;
       if (output == NULL) {
-	perror("Couldn't open output file");
+	suicide("Couldn't open output file");
 	return 1;
       }
       fclose(stdout);
@@ -227,33 +218,32 @@ int main(int argc, char **argv)
   if (!redirect_output) {
     output = stdout;
   }
-
-  //  if (uid != -1 && gid != -1)
-  //    drop_privs(uid, gid);
-
-    
+  
+  if (uid != -1 && gid != -1)
+    drop_privs(uid, gid);
+  
+  // get to the important stuff!
   buffer = malloc(out_block_size * sizeof(uint8_t));
   device_count = rtlsdr_get_device_count();
   if (!device_count) {
-    fprintf(stderr, "No supported devices found.\n");
+    suicide("No supported devices found.\n");
     exit(1);
   }
   
-  fprintf(stderr, "Found %d device(s):\n", device_count);
+  log_line(LOG_DEBUG, "Found %d device(s):", device_count);
   for (i = 0; i <(unsigned int)device_count; i++)
-    fprintf(stderr, "  %d:  %s\n", i, rtlsdr_get_device_name(i));
-  fprintf(stderr, "\n");
-  
-  fprintf(stderr, "Using device %d: %s\n",
+    log_line(LOG_DEBUG, "  %d:  %s", i, rtlsdr_get_device_name(i));
+    
+  log_line(LOG_DEBUG, "Using device %d: %s",
 	  dev_index,
 	  rtlsdr_get_device_name(dev_index));
   
   r = rtlsdr_open(&dev, dev_index);
   if (r < 0) {
-    fprintf(stderr, "Failed to open rtlsdr device #%d.\n", dev_index);
+    log_line(LOG_DEBUG, "Failed to open rtlsdr device #%d.", dev_index);
     exit(1);
   }
-
+  
   sigact.sa_handler = sighandler;
   sigemptyset(&sigact.sa_mask);
   sigact.sa_flags = 0;
@@ -261,45 +251,45 @@ int main(int argc, char **argv)
   sigaction(SIGTERM, &sigact, NULL);
   sigaction(SIGQUIT, &sigact, NULL);
   sigaction(SIGPIPE, &sigact, NULL);
-
+  
   
   /* Set the sample rate */
   r = rtlsdr_set_sample_rate(dev, samp_rate);
   if (r < 0)
-    fprintf(stderr, "WARNING: Failed to set sample rate.\n");
+    log_line(LOG_DEBUG, "WARNING: Failed to set sample rate.");
   
   /* Reset endpoint before we start reading from it (mandatory) */
   r = rtlsdr_reset_buffer(dev);
   if (r < 0)
-    fprintf(stderr, "WARNING: Failed to reset buffers.\n");
+    log_line(LOG_DEBUG, "WARNING: Failed to reset buffers.");
   
   /* Set start frequency */
-  fprintf(stderr, "Setting Frequency to %d\n", frequency);
+  log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
   r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
-    
+  
   /* set gain to max */
   count = rtlsdr_get_tuner_gains(dev, gains);
-  fprintf(stderr, "Setting gain to %.1f\n", (float)(gains[count-1]/10));
+  log_line(LOG_DEBUG, "Setting gain to %.1f", (float)(gains[count-1]/10));
   r = rtlsdr_set_tuner_gain_mode(dev, 1);
   if (r < 0)
-    fprintf(stderr, "WARNING: Couldn't set gain mode to manual\n");
+    log_line(LOG_DEBUG, "WARNING: Couldn't set gain mode to manual");
   
   r = rtlsdr_set_tuner_gain(dev, gains[count-1]);
   if (r < 0)
-    fprintf(stderr, "WARNING: Failed to set gain\n");
-
-  fprintf(stderr, "Doing FIPS init\n");
+    log_line(LOG_DEBUG, "WARNING: Failed to set gain");
+  
+  log_line(LOG_DEBUG, "Doing FIPS init");
   fips_init(&fipsctx, (int)0);
-
-  fprintf(stderr, "Reading samples in sync mode...\n");
+  
+  log_line(LOG_DEBUG, "Reading samples in sync mode...");
   while (!do_exit) {
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
     if (r < 0) {
-      fprintf(stderr, "ERROR: sync read failed.\n");
+      log_line(LOG_DEBUG, "ERROR: sync read failed.");
       break;
     }
     if ((uint32_t)n_read < out_block_size) {
-      fprintf(stderr, "ERROR: Short read, samples lost, exiting!\n");
+      log_line(LOG_DEBUG, "ERROR: Short read, samples lost, exiting!");
       break;
     }
     
@@ -342,7 +332,8 @@ int main(int argc, char **argv)
 	    // FIPS test failed
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
-		fprintf(stderr, "Failed: %s\n", fips_test_names[j]);
+		if (!gflags_detach)
+		  log_line(LOG_DEBUG, "Failed: %s", fips_test_names[j]);
 	      }
 	    }
 	  }
@@ -354,15 +345,13 @@ int main(int argc, char **argv)
     }
   }
   if (do_exit) {
-    fprintf(stderr, "\nUser cancel, exiting...\n");
+    log_line(LOG_DEBUG, "\nUser cancel, exiting...");
+  }  else {
+    log_line(LOG_DEBUG, "\nLibrary error %d, exiting...", r);
   }
-  else
-    fprintf(stderr, "\nLibrary error %d, exiting...\n", r);
   
   rtlsdr_close(dev);
   free (buffer);
   fclose(output);
   return 0;
 }
-
-
