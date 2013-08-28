@@ -5,10 +5,10 @@
  * Copyright (C) 2013 by Paul Warren <pwarren@pwarren.id.au>
 
  * Parts taken from:
- *  rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
- *  http://openfortress.org/cryptodoc/random/noise-filter.c
- *    by Rick van Rein <rick@openfortress.nl>
- *  snd-egd Copyright (C) 2008-2010 Nicholas J. Kain <nicholas aatt kain.us>
+ *  - rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
+ *  - http://openfortress.org/cryptodoc/random/noise-filter.c
+ *      by Rick van Rein <rick@openfortress.nl>
+ *  - snd-egd Copyright (C) 2008-2010 Nicholas J. Kain <nicholas aatt kain.us>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

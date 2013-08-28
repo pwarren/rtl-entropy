@@ -1,13 +1,13 @@
 rtl-entropy
 ===========
 
-An entropy generator using rtl-sdr.
+rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, runs it throught the FIPS 140-2 tests, if it passes write the entropy to the specified output. 
 
-The idea is to sample atmospheric noise, run it throught the FIPS 140-2 tests, if it passes write it out to the specified output. 
+If you're serious about the cryptographic security of your entropy source, you should probably short the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
 
-If you're serious about the cryptographic security of your entropy source, you should probably short the antenna, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
+Both of these are analog entropy sources.
 
-Neither of these are 'Quantum Random' sources
+This software has been tested on debian linux 7.1, but should work on any linux distribution, and might run on OS X and other POSIX compliant operating systems.
 
 Dependencies
 ------------
@@ -37,6 +37,12 @@ You should be able to use rndaddentropy from [twuwand](http://github.com/rfinnie
 
 ./rtl_entropy -s 2.4M -f 101.5M | rndaddentropy
 
+for Daemon mode, along with rngd from rng-tools on linux:
+
+rtl_entropy -b
+rngd -r /var/run/rtl_entropy.fifo -W95%
+
+The daemon mode uses /var/run/rtl_entropy.fifo for output and /var/run/rtl_entropy.pid for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximise performance.
 
 To Do
 -----
@@ -47,8 +53,6 @@ To Do
  * add Kaminsky debiasing to my von neumann debiasing
 
 - Code Review
-
-Thanks to Keenerd on the osmocom-sdr mailing list.
 
 
 Done!
@@ -64,10 +68,9 @@ rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
 
 Uses code from:
 
-  * rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de> http://sdr.osmocom.org/trac/wiki/rtl-sdr
-
+  * rtl_test. Copyright (C) 2012 by Steve Markgraf http://sdr.osmocom.org/trac/wiki/rtl-sdr
   * rng-test-4. Copyright (C) 2001 Philipp Rumpf http://sourceforge.net/projects/gkernel/
-
-  * http://openfortress.org/cryptodoc/random/noise-filter.c by Rick van Rein <rick@openfortress.nl>
-
+  * http://openfortress.org/cryptodoc/random/noise-filter.c by Rick van Rein
   * snd-egd http://code.google.com/p/snd-egd/
+  * Keenerd on the osmocom-sdr mailing list
+
