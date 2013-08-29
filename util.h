@@ -21,3 +21,4 @@ int parse_user(char *username, int *gid);
 int parse_group(char *groupname);
 void write_pidfile(void);
 void daemonize(void);
+double atofs(char* f);

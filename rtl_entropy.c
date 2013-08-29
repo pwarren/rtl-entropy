@@ -26,9 +26,9 @@
 
 #include <errno.h>
 #include <signal.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <syslog.h>
 #include <sys/capability.h>
 #include <sys/types.h>
@@ -49,15 +49,6 @@
 #include "util.h"
 #include "log.h"
 #include "defines.h"
-
-#define MHZ(x)	((x)*1000*1000)
-#define DEFAULT_SAMPLE_RATE		2048000
-#define DEFAULT_ASYNC_BUF_NUMBER	32
-#define DEFAULT_BUF_LENGTH		(16 * 16384)
-#define MINIMAL_BUF_LENGTH		512
-#define MAXIMAL_BUF_LENGTH		(256 * 16384)
-#define BUFFER_SIZE                     2500 // need 2500 bits for FIPS
-#define DEFAULT_FREQUENCY MHZ(70)
 
 // Globals.
 static int do_exit = 0;
@@ -83,29 +74,7 @@ void usage(void)
 
 static void sighandler(int signum)
 {
-  do_exit = 1;
-  rtlsdr_cancel_async(dev);
-}
-
-double atofs(char* f)
-/* standard suffixes */
-{
-  char* chop;
-  double suff = 1.0;
-  chop = malloc((strlen(f)+1)*sizeof(char));
-  strncpy(chop, f, strlen(f)-1);
-  switch (f[strlen(f)-1]) {
-  case 'G':
-    suff *= 1e3;
-  case 'M':
-    suff *= 1e3;
-  case 'k':
-    suff *= 1e3;
-    suff *= atof(chop);}
-  free(chop);
-  if (suff != 1.0) {
-    return suff;}
-  return atof(f);
+  do_exit = signum;
 }
 
 static void drop_privs(int uid, int gid)
@@ -360,7 +329,7 @@ int main(int argc, char **argv)
   }
   
   rtlsdr_close(dev);
-  free (buffer);
+  free(buffer);
   fclose(output);
   return 0;
 }

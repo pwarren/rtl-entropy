@@ -15,10 +15,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <math.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include <syslog.h>
 #include <signal.h>
 #include <sys/mman.h>
@@ -83,4 +85,27 @@ void daemonize(void)
 
     write_pidfile();
 }
+
+
+double atofs(char* f)
+/* standard suffixes */
+{
+  char* chop;
+  double suff = 1.0;
+  chop = malloc((strlen(f)+1)*sizeof(char));
+  strncpy(chop, f, strlen(f)-1);
+  switch (f[strlen(f)-1]) {
+  case 'G':
+    suff *= 1e3;
+  case 'M':
+    suff *= 1e3;
+  case 'k':
+    suff *= 1e3;
+    suff *= atof(chop);}
+  free(chop);
+  if (suff != 1.0) {
+    return suff;}
+  return atof(f);
+}
+
 
