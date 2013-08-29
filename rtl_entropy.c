@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/prctl.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <grp.h>
 
@@ -67,12 +68,12 @@ void usage(void)
 {
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
-	  "Usage:\n"
+	  "Usage: rtl_entropy [options]\n"
 	  "\t[-b daemonize]\n"
 	  "\t[-d device_index (default: 0)]\n"
 	  "\t[-f set frequency to listen (default: 54MHz )]\n"
 	  "\t[-s samplerate (default: 2048000 Hz)]\n"
-	  "\t[-o output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b)))\n"
+	  "\t[-o output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
 	  "\t[-p pid file] (default: /var/run/rtl_entropy.pid)\n"
 	  "\t[-u user to run as] (default: rtl_entropy)\n"
 	  "\t[-g group to run as] (default: rtl_entropy)\n"
@@ -142,6 +143,8 @@ int main(int argc, char **argv)
   int gains[100];
   int count, fips_result;
 
+  char *arg_string= "d:f:g:o:p:s:u:hb";
+
   //daemon
   int uid = -1, gid = -1;
 
@@ -149,12 +152,11 @@ int main(int argc, char **argv)
   FILE *output = NULL;
   int redirect_output = 0;
   
-  opt = getopt(argc, argv, "d:f:g:o:p:s:u:hb");
+  opt = getopt(argc, argv, arg_string);
   while (opt != -1) {
     switch (opt) {
     case 'b':
       gflags_detach = 1;
-      redirect_output=1;
       break;
       
     case 'd':
@@ -178,7 +180,6 @@ int main(int argc, char **argv)
       output = fopen(optarg,"w");
       if (output == NULL) {
 	suicide("Couldn't open output file");
-	return 1;
       }
       fclose(stdout);
       break;
@@ -199,22 +200,30 @@ int main(int argc, char **argv)
       usage();
       break;
     }
-    opt = getopt(argc, argv, "d:f:g:o:p:s:u:hb");
+    opt = getopt(argc, argv, arg_string);
   }
   
   if (gflags_detach) {
+    daemonize();
+    
     if (!redirect_output) {
+      if (mkfifo(DEFAULT_OUT_FILE,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) {
+	if (errno != EEXIST) {
+	  perror("Bad FIFO");
+	}
+      }
+      log_line(LOG_INFO, "Waiting for something to read the FIFO");
       output = fopen(DEFAULT_OUT_FILE,"w");
-      redirect_output = 1;
       if (output == NULL) {
 	suicide("Couldn't open output file");
-	return 1;
       }
+      redirect_output = 1;
       fclose(stdout);
     }
-    daemonize();
   }
-  
+
+  log_line(LOG_INFO,"Something's reading the FIFO, Continuing!");
+
   if (!redirect_output) {
     output = stdout;
   }

@@ -42,7 +42,9 @@ for Daemon mode, along with rngd from rng-tools on linux:
 rtl_entropy -b
 rngd -r /var/run/rtl_entropy.fifo -W95%
 
-The daemon mode uses /var/run/rtl_entropy.fifo for output and /var/run/rtl_entropy.pid for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximise performance.
+The daemon mode by default uses /var/run/rtl_entropy.fifo for output and /var/run/rtl_entropy.pid for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximise performance.
+
+If you specify an output file with -o, rtl_entropy will open not attempt to create a FIFO, but will just open the file for writing.
 
 To Do
 -----
@@ -51,14 +53,14 @@ To Do
  * Need a mixing step xor fresh random bytes by with the old data
  * maybe a hash as well?
  * add Kaminsky debiasing to my von neumann debiasing
-
 - Code Review
+- Auto-detach kernel driver
 
 
 Done!
 -----
 
-* Implement daemon mode that adds entropy to the system pool.
+* Implement daemon mode
 
 
 Credits
