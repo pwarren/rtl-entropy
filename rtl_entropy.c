@@ -191,7 +191,7 @@ int main(int argc, char **argv)
     }
   }
 
-  log_line(LOG_INFO,"Something's reading the FIFO, Continuing!");
+  log_line(LOG_INFO,"Options parsed, ready.");
 
   if (!redirect_output) {
     output = stdout;
@@ -204,8 +204,7 @@ int main(int argc, char **argv)
   buffer = malloc(out_block_size * sizeof(uint8_t));
   device_count = rtlsdr_get_device_count();
   if (!device_count) {
-    suicide("No supported devices found.\n");
-    exit(1);
+    suicide("No supported devices found, shutting down");
   }
   
   log_line(LOG_DEBUG, "Found %d device(s):", device_count);
