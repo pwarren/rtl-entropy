@@ -13,6 +13,7 @@ Dependencies
 ------------
 
 * [rtlsdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
+* libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
 
 Build
 -----
