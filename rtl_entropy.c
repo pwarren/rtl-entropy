@@ -107,6 +107,7 @@ int main(int argc, char **argv)
   int device_count;
   int ch, ch2;
   unsigned char bitbuffer[BUFFER_SIZE] = {0};
+  unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
   unsigned int bitcounter = 0;
   int buffercounter = 0;
   int gains[100];
@@ -303,7 +304,10 @@ int main(int argc, char **argv)
 	  // Can now send it to FIPS!
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
 	  if (!fips_result) {
-	    // hooray it's proper random data
+	    // hooray it's proper random data, xor with old and write out
+	    for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
+	      bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
+	    }
 	    fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,output);	 
 	  } else {
 	    // FIPS test failed
@@ -314,7 +318,8 @@ int main(int argc, char **argv)
 	      }
 	    }
 	  }
-	  // reset it, and the counter
+	  // copy to old, reset it, and the counter
+	  memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;
 	}
