@@ -51,7 +51,6 @@ To Do
 -----
 
 - Further research and consultation with security experts is needed on:
- * Need a mixing step xor fresh random bytes by with the old data
  * maybe a hash as well?
  * add Kaminsky debiasing to my von neumann debiasing
 - Code Review
@@ -62,6 +61,7 @@ Done!
 -----
 
 * Implement daemon mode
+* Need a mixing step xor fresh random bytes by with the old data
 
 
 Credits
