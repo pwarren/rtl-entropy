@@ -67,7 +67,9 @@ Done!
 Credits
 -------
 
+
 rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
+Contributions from projectgus: https://github.com/projectgus
 
 Uses code from:
 
@@ -75,5 +77,7 @@ Uses code from:
   * rng-test-4. Copyright (C) 2001 Philipp Rumpf http://sourceforge.net/projects/gkernel/
   * http://openfortress.org/cryptodoc/random/noise-filter.c by Rick van Rein
   * snd-egd http://code.google.com/p/snd-egd/
+
+Some helpful ideas from
   * Keenerd on the osmocom-sdr mailing list
 
