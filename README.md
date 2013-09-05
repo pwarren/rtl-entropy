@@ -41,6 +41,7 @@ You should be able to use rndaddentropy from [twuwand](http://github.com/rfinnie
 for Daemon mode, along with rngd from rng-tools on linux:
 
 rtl_entropy -b
+
 rngd -r /var/run/rtl_entropy.fifo -W95%
 
 The daemon mode by default uses /var/run/rtl_entropy.fifo for output and /var/run/rtl_entropy.pid for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximise performance.
