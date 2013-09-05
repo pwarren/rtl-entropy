@@ -66,7 +66,7 @@ Done!
 
 Credits
 -------
-
+Development supported by Star2Star commnications.
 
 rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
 Contributions from projectgus: https://github.com/projectgus
