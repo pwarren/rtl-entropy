@@ -12,7 +12,7 @@ This software has been tested on debian linux 7.1, but should work on any linux 
 Dependencies
 ------------
 
-* [rtlsdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
+* [rtl-sdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 * libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
 
 Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: -DDETACH_KERNEL_DRIVER
@@ -66,8 +66,8 @@ To Do
 -----
 
 - Further research and consultation with security experts is needed on:
- * maybe a hash as well?
  * add Kaminsky debiasing to my von neumann debiasing
+ * maybe a hash as well?
 - Code Review
 - Auto-detach kernel driver
 
@@ -96,3 +96,37 @@ Uses code from:
 Some helpful ideas from
   * Keenerd on the osmocom-sdr mailing list
 
+
+
+Performance Testing
+-------------------
+
+rtl_entropy | rngtest -c 4096
+
+on my core i5 1.8Gh macbook air 5,3
+
+Least Significant bits: average bits/s from rngtest, failure count.
+Averaged over 5 runs. 
+
+2: 2577.507, 2
+
+4: 4258.930, 5
+
+6: 5157.910, 45
+
+8: 20.330, 12,856
+
+
+with 6 bits. 
+
+CFLAGS: average bits/s
+
+None: 3383.256
+
+-O2: 5129.748
+
+-O3: 5373.101
+
+-march=native: 3873.854	
+
+-march=native -O3: 5320
