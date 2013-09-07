@@ -48,7 +48,7 @@ or
 
 to set the sample rate to 2.4Msamples/s and the frequency to tune to as 101.5 MHz, piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
 
-You should be able to use rndaddentropy from [twuwand](http://github.com/rfinnie/twuewand)
+You should be able to use rndaddentropy from [twuewand](http://github.com/rfinnie/twuewand)
 
 ./rtl_entropy -s 2.4M -f 101.5M | rndaddentropy
 
