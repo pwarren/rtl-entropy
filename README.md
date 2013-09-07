@@ -3,7 +3,7 @@ rtl-entropy
 
 rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, runs it throught the FIPS 140-2 tests, if it passes write the entropy to the specified output. 
 
-If you're serious about the cryptographic security of your entropy source, you should probably short the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
+If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
 
 Both of these are analog entropy sources.
 
@@ -14,6 +14,20 @@ Dependencies
 
 * [rtlsdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 * libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
+
+Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: -DDETACH_KERNEL_DRIVER
+
+eg:
+
+cd ~/rtl-sdr
+
+mkdir build
+
+cd build
+
+cmake ../ -DDETACH_KERNEL_DRIVER
+
+then install as normal.
 
 Build
 -----
