@@ -103,7 +103,7 @@ Performance Testing
 
 rtl_entropy | rngtest -c 4096
 
-on my core i5 1.8Gh macbook air 5,3
+on my core i5 1.8GHz Macbook Air 5,2 running debian 7.1
 
 Least Significant bits: average bits/s from rngtest, failure count.
 Averaged over 5 runs. 
@@ -129,4 +129,4 @@ None: 3383.256
 
 -march=native: 3873.854	
 
--march=native -O3: 5320
+-march=native -O3: 5320.385
