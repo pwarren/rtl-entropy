@@ -200,7 +200,7 @@ int main(int argc, char **argv)
   
   if (uid != -1 && gid != -1)
     drop_privs(uid, gid);
-  
+
   // get to the important stuff!
   buffer = malloc(out_block_size * sizeof(uint8_t));
   device_count = rtlsdr_get_device_count();
@@ -221,7 +221,8 @@ int main(int argc, char **argv)
     log_line(LOG_DEBUG, "Failed to open rtlsdr device #%d.", dev_index);
     exit(1);
   }
-  
+
+  // Setup Signal handlers
   sigact.sa_handler = sighandler;
   sigemptyset(&sigact.sa_mask);
   sigact.sa_flags = 0;
@@ -241,17 +242,16 @@ int main(int argc, char **argv)
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Failed to reset buffers.");
   
-  /* Set start frequency */
   log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
   r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
   
-  /* set gain to max */
   count = rtlsdr_get_tuner_gains(dev, gains);
   log_line(LOG_DEBUG, "Setting gain to %.1f", (float)(gains[count-1]/10));
   r = rtlsdr_set_tuner_gain_mode(dev, 1);
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Couldn't set gain mode to manual");
-  
+
+  // max gain
   r = rtlsdr_set_tuner_gain(dev, gains[count-1]);
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Failed to set gain");
@@ -271,34 +271,41 @@ int main(int argc, char **argv)
       break;
     }
     
-    // for each byte in the read buffer
-    // pick least significant 4 bits
-    // good compromise between output throughput, and entropy quality
-    // get less FIPS fails with 2 bits, but half the througput
-    // get lots of FIPS fails and only a slight throughput increase with 6 bits
-    
-    // debias and store in the write buffer till it's full
+    /* for each byte in the rtl-sdr read buffer
+       pick least significant 4 bits
+       good compromise between output throughput, and entropy quality
+       get less FIPS fails with 2 bits, but half the througput
+       get lots of FIPS fails and only a slight throughput increase with 6 bits
+
+       debias and store in the write buffer till it's full
+    */
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
-      for (j=0; j < 4; j+= 2) {
+      for (j=0; j < 6; j+= 2) {
 	ch = (buffer[i] >> j) & 0x01;
 	ch2 = (buffer[i] >> (j+1)) & 0x01;
 	if (ch != ch2) {
 	  if (ch) {
 	    // store a 1 in our bitbuffer
 	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	    // the buffer will already be all zeroes, as it's set to that when full, and when initialised.
-	    //} else {
-	    // store a 0, yay for bitwise C magic (aka "I've no idea how this works!")
-	    //bitbuffer[buffercounter] &= ~(1 << bitcounter);
+	    /* the buffer will already be all zeroes, as it's set to that 
+	       when initialised, and when re-initialised after being written
+	       out. So the following isn't necessary (and takes precious cycles ;)
+	    */
+	    /*
+	      } else {
+	      // store a 0, yay for bitwise C magic 
+	      // (aka "I've no idea how this works!")
+	      bitbuffer[buffercounter] &= ~(1 << bitcounter);
+	    */
 	  }
 	  bitcounter++;
 	}
-	// if our byte is full 
-	if (bitcounter >= sizeof(bitbuffer[0]) * 8) { //bits per byte
+	// is byte full?
+	if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
 	  buffercounter++;
 	  bitcounter = 0;
 	}
-	// if our buffer is full
+	// is buffer full?
 	if (buffercounter > BUFFER_SIZE) {
 	  // We have 2500 bytes of entropy
 	  // Can now send it to FIPS!

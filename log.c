@@ -1,4 +1,4 @@
-/* log.c - simple logging support
+/* log.c - simple logging support, from snd-egd
  *
  * (C) 2005-2010 Nicholas J. Kain <njkain at gmail dot com>
  *

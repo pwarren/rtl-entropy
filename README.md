@@ -3,7 +3,7 @@ rtl-entropy
 
 rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, runs it throught the FIPS 140-2 tests, if it passes write the entropy to the specified output. 
 
-If you're serious about the cryptographic security of your entropy source, you should probably short the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
+If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
 
 Both of these are analog entropy sources.
 
@@ -12,8 +12,22 @@ This software has been tested on debian linux 7.1, but should work on any linux 
 Dependencies
 ------------
 
-* [rtlsdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
+* [rtl-sdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 * libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
+
+Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: -DDETACH_KERNEL_DRIVER
+
+eg:
+
+cd ~/rtl-sdr
+
+mkdir build
+
+cd build
+
+cmake ../ -DDETACH_KERNEL_DRIVER
+
+then install as normal.
 
 Build
 -----
@@ -34,7 +48,7 @@ or
 
 to set the sample rate to 2.4Msamples/s and the frequency to tune to as 101.5 MHz, piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
 
-You should be able to use rndaddentropy from [twuwand](http://github.com/rfinnie/twuewand)
+You should be able to use rndaddentropy from [twuewand](http://github.com/rfinnie/twuewand)
 
 ./rtl_entropy -s 2.4M -f 101.5M | rndaddentropy
 
@@ -52,8 +66,8 @@ To Do
 -----
 
 - Further research and consultation with security experts is needed on:
- * maybe a hash as well?
  * add Kaminsky debiasing to my von neumann debiasing
+ * maybe a hash as well?
 - Code Review
 - Auto-detach kernel driver
 
@@ -82,3 +96,37 @@ Uses code from:
 Some helpful ideas from
   * Keenerd on the osmocom-sdr mailing list
 
+
+
+Performance Testing
+-------------------
+
+rtl_entropy | rngtest -c 4096
+
+on my core i5 1.8GHz Macbook Air 5,2 running debian 7.1
+
+Least Significant bits: average bits/s from rngtest, failure count.
+Averaged over 5 runs. 
+
+2: 2577.507, 2
+
+4: 4258.930, 5
+
+6: 5157.910, 45
+
+8: 20.330, 12,856
+
+
+with 6 bits. 
+
+CFLAGS: average bits/s
+
+None: 3383.256
+
+-O2: 5129.748
+
+-O3: 5373.101
+
+-march=native: 3873.854	
+
+-march=native -O3: 5320.385

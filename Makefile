@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-I. -O2 -Wall -Wextra
+CFLAGS=-I. -O3 -Wall -Wextra
 DEPS = fips.h util.h log.h
 OBJ = rtl_entropy.o fips.o util.o log.o
 LDFLAGS += -lm -lcap `pkg-config --libs librtlsdr`
@@ -12,3 +12,6 @@ rtl_entropy: $(OBJ)
 
 clean:
 	rm -f *.o rtl_entropy
+
+install:
+	install -s rtl_entropy /usr/local/sbin/
