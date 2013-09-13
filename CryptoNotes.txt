@@ -1,0 +1,38 @@
+/dev/random is fed by an algorithm that does very much what you're
+describing. It takes several variously-trusted entropy sources and
+mixes them into an "entropy pool" using a polynomial function -- for
+each new byte of entropy that comes in, it's xor'd into the pool, and
+then the entire pool is stirred with the mixing function. 
+
+When it's desired to get some randomness out of the pool, the entire pool is
+hashed with SHA-1 to get the output, then the pool is mixed again
+(and actually there's some more hashing, folding, and mutilating
+going on to make sure that reversing the process is about as hard as
+reversing SHA-1). At the same time, there's a bunch of accounting
+going on -- each time some entropy is added to the pool, an estimate
+of the number of bits of entropy it's worth is added to the account,
+and each time some bytes are extracted from the pool, that number is
+subtracted, and the random device will block (waiting on more
+external entropy) if the account would go below zero. Of course, if
+you use the "urandom" device, the blocking doesn't happen and the
+pool simply keeps getting hashed and mixed to produce more bytes,
+which turns it into a PRNG instead of an RNG.
+
+
+Using a hash function is a good approach - just make sure you underestimate the amount of entropy each source contributes, so that if you are right about one or more of them being less than totally random, you haven't weakened your key unduly.
+
+
+http://security.stackexchange.com/questions/2604/evaluating-the-entropy-gathering-in-a-prng
+
+
+http://stackoverflow.com/questions/3436376/what-is-the-most-secure-seed-for-random-number-generation/3532136#3532136
+
+https://www.schneier.com/blog/archives/2006/06/random_number_g.html
+
+http://www.howtodothings.com/computers/a1337-cryptographic-random-numbers-.html
+
+https://www.merrymeet.com/jon/usingrandom.html
+
+http://www.astro.umd.edu/~chris/publications/html_papers/deadsources_revised/node9.html
+
+http://crypto-how-to.com/entropy/
