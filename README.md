@@ -69,7 +69,7 @@ To Do
  * add Kaminsky debiasing to my von neumann debiasing
  * maybe a hash as well?
 - Code Review
-- Auto-detach kernel driver
+- Break things out of main()
 
 
 Done!
@@ -77,7 +77,7 @@ Done!
 
 * Implement daemon mode
 * Need a mixing step xor fresh random bytes by with the old data
-
+- Auto-detach kernel driver
 
 Credits
 -------
