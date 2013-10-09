@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 	  perror("Bad FIFO");
 	}
       }
-      log_line(LOG_INFO, "Waiting for something to read the FIFO");
+      log_line(LOG_INFO, "Waiting for a Reader...");
       output = fopen(DEFAULT_OUT_FILE,"w");
       if (output == NULL) {
 	suicide("Couldn't open output file");
@@ -234,7 +234,7 @@ int main(int argc, char **argv)
   sigaction(SIGTERM, &sigact, NULL);
   sigaction(SIGQUIT, &sigact, NULL);
   sigaction(SIGPIPE, &sigact, NULL);
-  
+  sigaction(SIGKILL, &sigact, NULL);
   
   /* Set the sample rate */
   r = rtlsdr_set_sample_rate(dev, samp_rate);

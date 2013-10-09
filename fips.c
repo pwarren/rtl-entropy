@@ -117,7 +117,7 @@ int fips_run_rng_test (fips_ctx_t *ctx, const void *buf)
 	rngdatabuf = (unsigned char *)buf;
 
 	for (i=0; i<FIPS_RNG_BUFFER_SIZE; i += 4) {
-		int new32 = rngdatabuf[i] |
+		unsigned int new32 = rngdatabuf[i] |
 			    ( rngdatabuf[i+1] << 8 ) |
 			    ( rngdatabuf[i+2] << 16 ) |
 			    ( rngdatabuf[i+3] << 24 );
