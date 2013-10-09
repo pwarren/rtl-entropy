@@ -50,7 +50,7 @@
 #include "log.h"
 #include "defines.h"
 
-// Globals.
+/*  Globals. */
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
@@ -115,10 +115,10 @@ int main(int argc, char **argv)
 
   char *arg_string= "d:f:g:o:p:s:u:hb";
 
-  //daemon
+  /* daemon */
   int uid = -1, gid = -1;
 
-  // File handling stuff
+  /* File handling stuff */
   FILE *output = NULL;
   int redirect_output = 0;
   
@@ -172,9 +172,15 @@ int main(int argc, char **argv)
     }
     opt = getopt(argc, argv, arg_string);
   }
+
   
   if (gflags_detach) {
     daemonize();
+  }
+  log_line(LOG_INFO,"Options parsed, ready.");
+
+
+  if (gflags_detach) {
     
     if (!redirect_output) {
       if (mkfifo(DEFAULT_OUT_FILE,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) {
@@ -192,8 +198,6 @@ int main(int argc, char **argv)
     }
   }
 
-  log_line(LOG_INFO,"Options parsed, ready.");
-
   if (!redirect_output) {
     output = stdout;
   }
@@ -201,7 +205,7 @@ int main(int argc, char **argv)
   if (uid != -1 && gid != -1)
     drop_privs(uid, gid);
 
-  // get to the important stuff!
+  /* get to the important stuff! */
   buffer = malloc(out_block_size * sizeof(uint8_t));
   device_count = rtlsdr_get_device_count();
   if (!device_count) {
@@ -222,7 +226,7 @@ int main(int argc, char **argv)
     exit(1);
   }
 
-  // Setup Signal handlers
+  /* Setup Signal handlers */
   sigact.sa_handler = sighandler;
   sigemptyset(&sigact.sa_mask);
   sigact.sa_flags = 0;
@@ -251,7 +255,7 @@ int main(int argc, char **argv)
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Couldn't set gain mode to manual");
 
-  // max gain
+  /* max gain */
   r = rtlsdr_set_tuner_gain(dev, gains[count-1]);
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Failed to set gain");
@@ -260,7 +264,13 @@ int main(int argc, char **argv)
   fips_init(&fipsctx, (int)0);
   
   log_line(LOG_DEBUG, "Reading samples in sync mode...");
-  while (!do_exit) {
+  while ( (!do_exit) || (do_exit == SIGPIPE)) {
+    if (do_exit == SIGPIPE) {
+      log_line(LOG_DEBUG, "Reader went away, closing FIFO");
+      fclose(output);
+      log_line(LOG_DEBUG, "Waiting for a Reader...");
+      output = fopen(DEFAULT_OUT_FILE,"w");
+    }
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
     if (r < 0) {
       log_line(LOG_DEBUG, "ERROR: sync read failed.");
@@ -285,39 +295,37 @@ int main(int argc, char **argv)
 	ch2 = (buffer[i] >> (j+1)) & 0x01;
 	if (ch != ch2) {
 	  if (ch) {
-	    // store a 1 in our bitbuffer
+	    /* store a 1 in our bitbuffer */
 	    bitbuffer[buffercounter] |= 1 << bitcounter;
 	    /* the buffer will already be all zeroes, as it's set to that 
 	       when initialised, and when re-initialised after being written
 	       out. So the following isn't necessary (and takes precious cycles ;)
-	    */
-	    /*
 	      } else {
 	      // store a 0, yay for bitwise C magic 
-	      // (aka "I've no idea how this works!")
+	      // (aka "I've no idea how this works!") 
 	      bitbuffer[buffercounter] &= ~(1 << bitcounter);
 	    */
 	  }
 	  bitcounter++;
 	}
-	// is byte full?
+	/* is byte full? */
 	if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
 	  buffercounter++;
 	  bitcounter = 0;
 	}
-	// is buffer full?
+	/* is buffer full? */
 	if (buffercounter > BUFFER_SIZE) {
-	  // We have 2500 bytes of entropy
-	  // Can now send it to FIPS!
+	  /* We have 2500 bytes of entropy 
+	     Can now send it to FIPS! */
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
 	  if (!fips_result) {
-	    // hooray it's proper random data, xor with old and write out
+	    /* hooray it's proper random data, xor with old and write out */
 	    for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
 	      bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
 	    }
 	    fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,output);	 
 	  } else {
-	    // FIPS test failed
+	    /* FIPS test failed */
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
 		if (!gflags_detach)
@@ -325,7 +333,7 @@ int main(int argc, char **argv)
 	      }
 	    }
 	  }
-	  // copy to old, reset it, and the counter
+	  /* copy to old, reset it, and the counter */
 	  memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;
