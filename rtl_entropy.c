@@ -307,7 +307,9 @@ int main(int argc, char **argv)
 	    */
 	  }
 	  bitcounter++;
-	}
+	} /* else {
+	       // Do Stuff for Kaminsky debiasing 
+	       } */
 	/* is byte full? */
 	if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
 	  buffercounter++;
