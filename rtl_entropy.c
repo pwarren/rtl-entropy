@@ -54,12 +54,23 @@
 static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
+uint32_t dev_index = 0;
+uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
+uint32_t frequency = DEFAULT_FREQUENCY;
+int opt;
+int redirect_output = 0;
+int device_count;
+/* daemon */
+int uid = -1, gid = -1;
+
+/* File handling stuff */
+FILE *output = NULL;
 
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
 unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
 
-/* Counters/Markers */
+/* Counters */
 unsigned int bitcounter = 0;
 int buffercounter = 0;
 
@@ -81,52 +92,10 @@ void usage(void)
   exit(1);
 }
 
-static void sighandler(int signum)
-{
-  do_exit = signum;
-}
 
-static void drop_privs(int uid, int gid)
-{
-  cap_t caps;
-  prctl(PR_SET_KEEPCAPS, 1);
-  caps = cap_from_text("cap_sys_admin=ep");
-  if (!caps)
-    suicide("cap_from_text failed");
-  if (setgroups(0, NULL) == -1)
-    suicide("setgroups failed");
-  if (setegid(gid) == -1 || seteuid(uid) == -1)
-    suicide("dropping privs failed");
-  if (cap_set_proc(caps) == -1)
-    suicide("cap_set_proc failed");
-  cap_free(caps);
-}
-
-int main(int argc, char **argv)
-{
-  struct sigaction sigact;
-  int n_read;
-  int r, opt;
-  unsigned int i, j;
-  uint8_t *buffer;
-  uint32_t dev_index = 0;
-  uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
-  uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
-  uint32_t frequency = DEFAULT_FREQUENCY;
-  int device_count;
-  int ch, ch2;
-  int gains[100];
-  int count, fips_result;
-
+void parse_args(int argc, char ** argv) {
   char *arg_string= "d:f:g:o:p:s:u:hb";
-
-  /* daemon */
-  int uid = -1, gid = -1;
-
-  /* File handling stuff */
-  FILE *output = NULL;
-  int redirect_output = 0;
-  
+    
   opt = getopt(argc, argv, arg_string);
   while (opt != -1) {
     switch (opt) {
@@ -178,7 +147,43 @@ int main(int argc, char **argv)
     opt = getopt(argc, argv, arg_string);
   }
 
-  
+}
+
+static void sighandler(int signum)
+{
+  do_exit = signum;
+}
+
+static void drop_privs(int uid, int gid)
+{
+  cap_t caps;
+  prctl(PR_SET_KEEPCAPS, 1);
+  caps = cap_from_text("cap_sys_admin=ep");
+  if (!caps)
+    suicide("cap_from_text failed");
+  if (setgroups(0, NULL) == -1)
+    suicide("setgroups failed");
+  if (setegid(gid) == -1 || seteuid(uid) == -1)
+    suicide("dropping privs failed");
+  if (cap_set_proc(caps) == -1)
+    suicide("cap_set_proc failed");
+  cap_free(caps);
+}
+
+int main(int argc, char **argv)
+{
+  struct sigaction sigact;
+  int n_read;
+  int r;
+  unsigned int i, j;
+  uint8_t *buffer;
+  uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
+  int ch, ch2;
+  int gains[100];
+  int count, fips_result;
+
+  parse_args(argc, argv);
+
   if (gflags_detach) {
     daemonize();
   }
@@ -260,8 +265,8 @@ int main(int argc, char **argv)
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Couldn't set gain mode to manual");
 
-  /* max gain */
-  r = rtlsdr_set_tuner_gain(dev, gains[count-1]);
+  /* min gain for higher throughput when in a faraday cage */
+  r = rtlsdr_set_tuner_gain(dev, gains[0]);
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Failed to set gain");
   
