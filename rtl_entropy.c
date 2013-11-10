@@ -55,6 +55,15 @@ static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 
+/* Buffers */
+unsigned char bitbuffer[BUFFER_SIZE] = {0};
+unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
+
+/* Counters/Markers */
+unsigned int bitcounter = 0;
+int buffercounter = 0;
+
+
 void usage(void)
 {
   fprintf(stderr,
@@ -106,10 +115,6 @@ int main(int argc, char **argv)
   uint32_t frequency = DEFAULT_FREQUENCY;
   int device_count;
   int ch, ch2;
-  unsigned char bitbuffer[BUFFER_SIZE] = {0};
-  unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
-  unsigned int bitcounter = 0;
-  int buffercounter = 0;
   int gains[100];
   int count, fips_result;
 
