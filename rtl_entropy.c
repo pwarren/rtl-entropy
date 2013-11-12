@@ -52,6 +52,7 @@
 
 /*  Globals. */
 static int do_exit = 0;
+/*@NULL@*/
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 
@@ -69,7 +70,7 @@ void usage(void)
 	  "\t[-u user to run as] (default: rtl_entropy)\n"
 	  "\t[-g group to run as] (default: rtl_entropy)\n"
 	  );
-  exit(1);
+  exit(EXIT_SUCCESS);
 }
 
 static void sighandler(int signum)
