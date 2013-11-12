@@ -37,6 +37,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <grp.h>
+#include <openssl/sha.h>
+#include <openssl/aes.h>
 
 #ifdef __APPLE__
 #include <sys/time.h>
@@ -69,11 +71,17 @@ FILE *output = NULL;
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
 unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
+unsigned char hash_buffer[HASH_BUFFER_SIZE] = {0};
+unsigned char hash_data_buffer[SHA512_DIGEST_LENGTH] = {0};
 
 /* Counters */
 unsigned int bitcounter = 0;
-int buffercounter = 0;
+unsigned int buffercounter = 0;
+unsigned int hash_data_counter = 0;
+unsigned int hash_loop = 0;
 
+/* Other bits */
+AES_KEY wctx;
 
 void usage(void)
 {
@@ -170,6 +178,20 @@ static void drop_privs(int uid, int gid)
   cap_free(caps);
 }
 
+
+void store_hash_data(int bit) {
+  /* store data in a sort of ring buffer */
+  hash_data_buffer[hash_data_counter] |= bit;
+  hash_data_counter++;
+  if (hash_data_counter >= HASH_BUFFER_SIZE * sizeof(hash_data_buffer[0])) {
+    hash_data_counter = 0;  
+    /* let everyone know we've looped! */
+    if (!hash_loop) { 
+      hash_loop = 1;
+    }
+  }
+}
+
 int main(int argc, char **argv)
 {
   struct sigaction sigact;
@@ -188,7 +210,6 @@ int main(int argc, char **argv)
     daemonize();
   }
   log_line(LOG_INFO,"Options parsed, ready.");
-
 
   if (gflags_detach) {
     
@@ -292,10 +313,10 @@ int main(int argc, char **argv)
     }
     
     /* for each byte in the rtl-sdr read buffer
-       pick least significant 4 bits
+       pick least significant 6 bits
        good compromise between output throughput, and entropy quality
        get less FIPS fails with 2 bits, but half the througput
-       get lots of FIPS fails and only a slight throughput increase with 6 bits
+       get lots of FIPS fails and only a slight throughput increase with 8 bits
 
        debias and store in the write buffer till it's full
     */
@@ -307,19 +328,15 @@ int main(int argc, char **argv)
 	  if (ch) {
 	    /* store a 1 in our bitbuffer */
 	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	    /* the buffer will already be all zeroes, as it's set to that 
-	       when initialised, and when re-initialised after being written
-	       out. So the following isn't necessary (and takes precious cycles ;)
-	      } else {
-	      // store a 0, yay for bitwise C magic 
-	      // (aka "I've no idea how this works!") 
-	      bitbuffer[buffercounter] &= ~(1 << bitcounter);
-	    */
 	  }
 	  bitcounter++;
-	} /* else {
-	       // Do Stuff for Kaminsky debiasing 
-	       } */
+	} else {
+	  if (ch) {
+	    store_hash_data(1);
+	  } else {
+	    store_hash_data(0);
+	  }
+	}
 	/* is byte full? */
 	if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
 	  buffercounter++;
@@ -331,13 +348,24 @@ int main(int argc, char **argv)
 	     Can now send it to FIPS! */
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
 	  if (!fips_result) {
-	    /* hooray it's proper random data, xor with old and write out */
+	    /* if (hash_loop) { */
+	    /*   log_line(LOG_DEBUG,"in hash_loop"); */
+	    /*   /\* Get a key from disacarded bits *\/ */
+	    /*   SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer); */
+	    /*   log_line(LOG_DEBUG,"SHA512 Done"); */
+	    /*   /\* use key to encrypt output *\/ */
+	    /*   AES_set_encrypt_key(hash_buffer, sizeof(hash_buffer), &wctx); */
+	    /*   log_line(LOG_DEBUG,"Key Set"); */
+	    /*   /\* This Segfaults :( */
+	    /* 	 AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
+	    /* 	 log_line(LOG_DEBUG,"Output encrypted"); */
+	    /*   fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output); */
+	    
+	    /* xor with old data */
 	    for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
 	      bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
 	    }
-	    fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,output);	 
-	  } else {
-	    /* FIPS test failed */
+	    fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);	 	   	 } else {   /* FIPS test failed */
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
 		if (!gflags_detach)
@@ -345,8 +373,9 @@ int main(int argc, char **argv)
 	      }
 	    }
 	  }
-	  /* copy to old, reset it, and the counter */
+	  /* reset buffers, and the counter */
 	  memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
+	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;
 	}
