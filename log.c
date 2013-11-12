@@ -29,49 +29,49 @@ char gflags_detach = GFLAGS_DETACH;
 char gflags_debug = GFLAGS_DEBUG;
 
 void log_line(int logtype, char *format, ...) {
-    va_list argp;
-
-    if (format == NULL)
-        return;
-    if (logtype == LOG_DEBUG && !gflags_debug)
-        return;
-
-    if (gflags_detach) {
-        openlog("rtl-entropy", LOG_PID, LOG_DAEMON);
-        va_start(argp, format);
-        vsyslog(logtype | LOG_DAEMON, format, argp);
-        va_end(argp);
-        closelog();
-    } else {
-        va_start(argp, format);
-        vfprintf(stderr, format, argp);
-        fprintf(stderr, "\n");
-        va_end(argp);
-    }
+  va_list argp;
+  
+  if (format == NULL)
+    return;
+  if (logtype == LOG_DEBUG && !gflags_debug)
+    return;
+  
+  if (gflags_detach) {
+    openlog("rtl-entropy", LOG_PID, LOG_DAEMON);
+    va_start(argp, format);
+    vsyslog(logtype | LOG_DAEMON, format, argp);
+    va_end(argp);
     closelog();
+  } else {
+    va_start(argp, format);
+    vfprintf(stderr, format, argp);
+    fprintf(stderr, "\n");
+    va_end(argp);
+  }
+  closelog();
 }
 
 void suicide(char *format, ...) {
-    va_list argp;
-
-    if (format == NULL)
-        goto out;
-
-    if (gflags_detach) {
-        openlog("rtl-entropy", LOG_PID, LOG_DAEMON);
-        va_start(argp, format);
-        vsyslog(LOG_ERR | LOG_DAEMON, format, argp);
-        va_end(argp);
-        closelog();
-    } else {
-        va_start(argp, format);
-        vfprintf(stderr, format, argp);
-        fprintf(stderr, "\n");
-        va_end(argp);
-        perror(NULL);
-    }
+  va_list argp;
+  
+  if (format == NULL)
+    goto out;
+  
+  if (gflags_detach) {
+    openlog("rtl-entropy", LOG_PID, LOG_DAEMON);
+    va_start(argp, format);
+    vsyslog(LOG_ERR | LOG_DAEMON, format, argp);
+    va_end(argp);
     closelog();
-out:
-    exit(EXIT_FAILURE);
+  } else {
+    va_start(argp, format);
+    vfprintf(stderr, format, argp);
+    fprintf(stderr, "\n");
+    va_end(argp);
+    perror(NULL);
+  }
+  closelog();
+ out:
+  exit(EXIT_FAILURE);
 }
 

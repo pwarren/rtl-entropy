@@ -36,54 +36,54 @@ char *pidfile_path = DEFAULT_PID_FILE;
 
 int parse_user(char *username, int *gid)
 {
-    int t;
-    char *p;
-    struct passwd *pws;
-
-    t = (unsigned int) strtol(username, &p, 10);
-    if (*p != '\0') {
-        pws = getpwnam(username);
-        if (pws) {
-            t = (int)pws->pw_uid;
-            if (*gid < 1)
-                *gid = (int)pws->pw_gid;
-        } else suicide("FATAL - Invalid uid specified.\n");
-    }
-    return t;
+  int t;
+  char *p;
+  struct passwd *pws;
+  
+  t = (unsigned int) strtol(username, &p, 10);
+  if (*p != '\0') {
+    pws = getpwnam(username);
+    if (pws) {
+      t = (int)pws->pw_uid;
+      if (*gid < 1)
+	*gid = (int)pws->pw_gid;
+    } else suicide("FATAL - Invalid uid specified.\n");
+  }
+  return t;
 }
 
 int parse_group(char *groupname)
 {
-    int t;
-    char *p;
-    struct group *grp;
-
-    t = (unsigned int) strtol(groupname, &p, 10);
-    if (*p != '\0') {
-        grp = getgrnam(groupname);
-        if (grp) {
-            t = (int)grp->gr_gid;
-        } else suicide("FATAL - Invalid gid specified.\n");
-    }
-    return t;
+  int t;
+  char *p;
+  struct group *grp;
+  
+  t = (unsigned int) strtol(groupname, &p, 10);
+  if (*p != '\0') {
+    grp = getgrnam(groupname);
+    if (grp) {
+      t = (int)grp->gr_gid;
+    } else suicide("FATAL - Invalid gid specified.\n");
+  }
+  return t;
 }
 
 void write_pidfile(void)
 {
-    FILE *fh = fopen(pidfile_path, "w");
-    if (!fh)
-        suicide("failed creating pid file %s", pidfile_path);
-
-    fprintf(fh, "%i", getpid());
-    fclose(fh);
+  FILE *fh = fopen(pidfile_path, "w");
+  if (!fh)
+    suicide("failed creating pid file %s", pidfile_path);
+  
+  fprintf(fh, "%i", getpid());
+  fclose(fh);
 }
 
 void daemonize(void)
 {
-    if (daemon(0, 0) == -1)
-        suicide("fork failed");
-
-    write_pidfile();
+  if (daemon(0, 0) == -1)
+    suicide("fork failed");
+  
+  write_pidfile();
 }
 
 

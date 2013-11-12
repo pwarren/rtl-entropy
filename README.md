@@ -3,7 +3,7 @@ rtl-entropy
 
 rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, runs it throught the FIPS 140-2 tests, if it passes write the entropy to the specified output. 
 
-If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio.
+If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio. 
 
 Both of these are analog entropy sources.
 
@@ -14,6 +14,8 @@ Dependencies
 
 * [rtl-sdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 * libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
+* pkgconfig - Or edit the Makefile to find your rtl-sdr header files.
+* openssl
 
 Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: -DDETACH_KERNEL_DRIVER
 
@@ -97,6 +99,16 @@ Some helpful ideas from
   * Keenerd on the osmocom-sdr mailing list
 
 
+Cryptography Discussion
+-----------------------
+
+As I mentioned above, capturing atmospheric radio is not terribly secure, if someone can transmit over the bandwidth you're listening on they could potentially influence the entropy your getting, and be able then to guess at your private keys!
+
+To combat this, I'm proposing to do Kaminsky debiasing, which will dramatically alter the output if the input differs slightly. What this debiasing step does is take the bits rejected from the von neumann filter and create a SHA512 hash from those bits, then encrypt the entropy from the von nuemann filter using the hash as the key.
+
+This makes the output much harder for an attacker to guess, entropy output will differ unpredictably for the attacker as they have to know the quantisation limits of your ADC to know which bits will be used where!
+
+Happy for someone to correct me and justify why you should never use this for real entropy :)
 
 Performance Testing
 -------------------
