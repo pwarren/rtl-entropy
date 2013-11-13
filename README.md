@@ -1,7 +1,7 @@
 rtl-entropy
 ===========
 
-rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, runs it throught the FIPS 140-2 tests, if it passes write the entropy to the specified output. 
+rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing runs it throught the FIPS 140-2 tests, then does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
 
 If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio. 
 
@@ -36,7 +36,7 @@ Build
 
 make 
 
-Assumes you've got the rtl-sdr libraries and gcc installed.
+Assumes you've got the dependancies installed, cmake coming Real Soon Now (TM).
 
 Usage
 -----
@@ -67,11 +67,8 @@ If you specify an output file with -o, rtl_entropy will open not attempt to crea
 To Do
 -----
 
-- Further research and consultation with security experts is needed on:
- * add Kaminsky debiasing to my von neumann debiasing
- * maybe a hash as well?
-- Code Review
-- Break things out of main()
+* Code Review
+* Break things out of main()
 
 
 Done!
@@ -79,7 +76,11 @@ Done!
 
 * Implement daemon mode
 * Need a mixing step xor fresh random bytes by with the old data
-- Auto-detach kernel driver
+* add Kaminsky debiasing to my von neumann debiasing
+* maybe a hash as well?
+* Auto-detach kernel driver
+* Further research and consultation with security experts is needed on:
+
 
 Credits
 -------
