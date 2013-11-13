@@ -369,20 +369,17 @@ int main(int argc, char **argv)
 	    if (hash_loop) {
 	      /*   /\* Get a key from disacarded bits *\/ */
 	      SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);       
-	      /* log_line(LOG_DEBUG,"SHA512 Done");  */
-	      /*   /\* use key to encrypt output *\/ */
-	      /* AES_set_encrypt_key(hash_buffer, sizeof(hash_buffer), &wctx); */
-	      /* log_line(LOG_DEBUG,"Key Set"); */
-	      /* /\*   /\\* This Segfaults :( *\/ */
-	      /* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
-	      /* log_line(LOG_DEBUG,"Output encrypted"); */
-	      /* fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output) */;
+	      /* use key to encrypt output */
+	      AES_set_encrypt_key(hash_buffer, 128, &wctx);
+	      AES_encrypt(bitbuffer, bitbuffer_old, &wctx);
+	      /* yay, send it to the output! */
+	      fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
 	    }
 	    /* xor with old data */
-	    for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
-	      bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
-	    }
-	    fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);  	 
+	    /* for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) { */
+	    /*   bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter]; */
+	    /* }  */
+	    /* fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);  	  */
 	  } else {   /* FIPS test failed */
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
