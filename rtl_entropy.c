@@ -72,13 +72,14 @@ FILE *output = NULL;
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
 unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
-unsigned char hash_buffer[HASH_BUFFER_SIZE] = {0};
+unsigned char hash_buffer[SHA512_DIGEST_LENGTH] = {0};
 unsigned char hash_data_buffer[SHA512_DIGEST_LENGTH] = {0};
 
 /* Counters */
 unsigned int bitcounter = 0;
 unsigned int buffercounter = 0;
 unsigned int hash_data_counter = 0;
+unsigned int hash_data_bit_counter = 0;
 unsigned int hash_loop = 0;
 
 /* Other bits */
@@ -182,14 +183,38 @@ static void drop_privs(int uid, int gid)
 
 void store_hash_data(int bit) {
   /* store data in a sort of ring buffer */
-  hash_data_buffer[hash_data_counter] |= bit;
-  hash_data_counter++;
-  if (hash_data_counter >= HASH_BUFFER_SIZE * sizeof(hash_data_buffer[0])) {
-    hash_data_counter = 0;  
-    /* let everyone know we've looped! */
-    if (!hash_loop) { 
-      hash_loop = 1;
+  if (bit) {
+    hash_data_buffer[hash_data_counter] |= 1 << hash_data_bit_counter;
+  } else {
+    hash_data_buffer[hash_data_counter] &= ~(1 << hash_data_bit_counter);
+  }
+  hash_data_bit_counter++;
+  if (hash_data_bit_counter == sizeof(hash_data_buffer[0]) * 8) {
+    hash_data_bit_counter = 0;
+    hash_data_counter++;
+  }
+  
+  if (hash_data_counter == SHA512_DIGEST_LENGTH) {
+    hash_data_counter = 0;      
+    hash_loop=1;
+  }
+}
+
+void route_output(void) {
+  /* Redirect output if directed */   
+  if (!redirect_output) {
+    if (mkfifo(DEFAULT_OUT_FILE,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) {
+      if (errno != EEXIST) {
+	perror("Bad FIFO");
+      }
     }
+    log_line(LOG_INFO, "Waiting for a Reader...");
+    output = fopen(DEFAULT_OUT_FILE,"w");
+    if (output == NULL) {
+      suicide("Couldn't open output file");
+    }
+    redirect_output = 1;
+    fclose(stdout);
   }
 }
 
@@ -211,32 +236,16 @@ int main(int argc, char **argv)
     daemonize();
   }
   log_line(LOG_INFO,"Options parsed, ready.");
-
-  if (gflags_detach) {
-    
-    if (!redirect_output) {
-      if (mkfifo(DEFAULT_OUT_FILE,S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) {
-	if (errno != EEXIST) {
-	  perror("Bad FIFO");
-	}
-      }
-      log_line(LOG_INFO, "Waiting for a Reader...");
-      output = fopen(DEFAULT_OUT_FILE,"w");
-      if (output == NULL) {
-	suicide("Couldn't open output file");
-      }
-      redirect_output = 1;
-      fclose(stdout);
-    }
-  }
-
-  if (!redirect_output) {
+  
+  if (gflags_detach)
+    route_output();
+  
+  if (!redirect_output)
     output = stdout;
-  }
   
   if (uid != -1 && gid != -1)
     drop_privs(uid, gid);
-
+  
   /* get to the important stuff! */
   buffer = malloc(out_block_size * sizeof(uint8_t));
   device_count = rtlsdr_get_device_count();
@@ -315,11 +324,17 @@ int main(int argc, char **argv)
     
     /* for each byte in the rtl-sdr read buffer
        pick least significant 6 bits
-       good compromise between output throughput, and entropy quality
-       get less FIPS fails with 2 bits, but half the througput
-       get lots of FIPS fails and only a slight throughput increase with 8 bits
-
+       for now:
        debias and store in the write buffer till it's full
+       xor with old data and write to output
+
+       soon will be: 
+       debias, storing useful bits in write buffer, and discarded bits in hash buffer
+       until the write buffer is full.
+       create a key by SHA512() hashing the hash buffer
+       encrypt write buffer with key
+       output encrypted buffer
+       
     */
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
       for (j=0; j < 6; j+= 2) {
@@ -329,7 +344,7 @@ int main(int argc, char **argv)
 	  if (ch) {
 	    /* store a 1 in our bitbuffer */
 	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	  }
+	  } /* else, leave the buffer alone, it's already 0 at this bit */
 	  bitcounter++;
 	} else {
 	  if (ch) {
@@ -338,35 +353,37 @@ int main(int argc, char **argv)
 	    store_hash_data(0);
 	  }
 	}
+	
 	/* is byte full? */
 	if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
 	  buffercounter++;
 	  bitcounter = 0;
 	}
+	
 	/* is buffer full? */
 	if (buffercounter > BUFFER_SIZE) {
 	  /* We have 2500 bytes of entropy 
 	     Can now send it to FIPS! */
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
 	  if (!fips_result) {
-	    /* if (hash_loop) { */
-	    /*   log_line(LOG_DEBUG,"in hash_loop"); */
-	    /*   /\* Get a key from disacarded bits *\/ */
-	    /*   SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer); */
-	    /*   log_line(LOG_DEBUG,"SHA512 Done"); */
-	    /*   /\* use key to encrypt output *\/ */
-	    /*   AES_set_encrypt_key(hash_buffer, sizeof(hash_buffer), &wctx); */
-	    /*   log_line(LOG_DEBUG,"Key Set"); */
-	    /*   /\* This Segfaults :( */
-	    /* 	 AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
-	    /* 	 log_line(LOG_DEBUG,"Output encrypted"); */
-	    /*   fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output); */
-	    
+	    if (hash_loop) {
+	      /*   /\* Get a key from disacarded bits *\/ */
+	      SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);       
+	      /* log_line(LOG_DEBUG,"SHA512 Done");  */
+	      /*   /\* use key to encrypt output *\/ */
+	      /* AES_set_encrypt_key(hash_buffer, sizeof(hash_buffer), &wctx); */
+	      /* log_line(LOG_DEBUG,"Key Set"); */
+	      /* /\*   /\\* This Segfaults :( *\/ */
+	      /* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
+	      /* log_line(LOG_DEBUG,"Output encrypted"); */
+	      /* fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output) */;
+	    }
 	    /* xor with old data */
 	    for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
 	      bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
 	    }
-	    fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);	 	   	 } else {   /* FIPS test failed */
+	    fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);  	 
+	  } else {   /* FIPS test failed */
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
 		if (!gflags_detach)
