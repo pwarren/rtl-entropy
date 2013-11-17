@@ -95,8 +95,8 @@ void usage(void) {
 	  "\t[-b Daemonize]\n"
 	  "\t[-d Device index (default: 0)]\n"
 	  "\t[-e Encrypt output\n"
-	  "\t[-f Set frequency to listen (default: 54MHz )]\n"
-	  "\t[-s Samplerate (default: 2048000 Hz)]\n"
+	  "\t[-f Set frequency to listen (default: 70MHz )]\n"
+	  "\t[-s Samplerate (default: 3200000 Hz)]\n"
 	  "\t[-o Output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
 	  "\t[-p PID file] (default: /var/run/rtl_entropy.pid)\n"
 	  "\t[-u User to run as] (default: rtl_entropy)\n"
@@ -233,8 +233,10 @@ int main(int argc, char **argv) {
   uint8_t *ciphertext;
   uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
   int ch, ch2;
-  int gains[100];
-  int count, fips_result;
+  int* gains;
+  unsigned int gain_count = 0;
+  int gain_index = 0;
+  int fips_result;
   int aes_len;
   
   parse_args(argc, argv);
@@ -297,16 +299,21 @@ int main(int argc, char **argv) {
   log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
   r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
   
-  count = rtlsdr_get_tuner_gains(dev, gains);
-  log_line(LOG_DEBUG, "Setting gain to %.1f", (float)(gains[count-1]/10));
+  gain_count = rtlsdr_get_tuner_gains(dev, NULL);
+  gains = malloc(sizeof(int) * gain_count);
+  gain_count = rtlsdr_get_tuner_gains(dev, gains);
+  
+  gain_index = 0;
+  log_line(LOG_DEBUG, "Setting gain to %.1f", (float)gains[gain_index]/10);
+  
+  /* Manual gain mode */
   r = rtlsdr_set_tuner_gain_mode(dev, 1);
   if (r < 0)
-    log_line(LOG_DEBUG, "WARNING: Couldn't set gain mode to manual");
-
-  /* min gain for higher throughput when in a faraday cage */
-  r = rtlsdr_set_tuner_gain(dev, gains[0]);
+    log_line(LOG_DEBUG, "WARNING: Failed to set manual gain");
+  r = rtlsdr_set_tuner_gain(dev, gains[gain_index]);
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Failed to set gain");
+  free(gains);
   
   log_line(LOG_DEBUG, "Doing FIPS init");
   fips_init(&fipsctx, (int)0);
