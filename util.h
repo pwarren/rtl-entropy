@@ -15,6 +15,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <openssl/evp.h>
+
 extern char *pidfile_path;
 
 int parse_user(char *username, int *gid);
@@ -22,3 +24,5 @@ int parse_group(char *groupname);
 void write_pidfile(void);
 void daemonize(void);
 double atofs(char* f);
+int aes_init(unsigned char *key_data, int key_data_len, EVP_CIPHER_CTX *e_ctx);
+unsigned char *aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int *len);

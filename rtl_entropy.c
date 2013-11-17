@@ -85,9 +85,10 @@ unsigned int hash_loop = 0;
 
 /* Other bits */
 AES_KEY wctx;
+EVP_CIPHER_CTX en;
 
-void usage(void)
-{
+
+void usage(void) {
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage: rtl_entropy [options]\n"
@@ -162,7 +163,6 @@ void parse_args(int argc, char ** argv) {
     }
     opt = getopt(argc, argv, arg_string);
   }
-
 }
 
 static void sighandler(int signum)
@@ -224,24 +224,25 @@ void route_output(void) {
   }
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   struct sigaction sigact;
   int n_read;
   int r;
   unsigned int i, j;
   uint8_t *buffer;
+  uint8_t *ciphertext;
   uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
   int ch, ch2;
   int gains[100];
   int count, fips_result;
-
+  int aes_len;
+  
   parse_args(argc, argv);
-
+  
   if (gflags_detach) {
     daemonize();
   }
-  log_line(LOG_INFO,"Options parsed, ready.");
+  log_line(LOG_INFO,"Options parsed, continuing.");
   
   if (gflags_detach)
     route_output();
@@ -382,10 +383,14 @@ int main(int argc, char **argv)
 		/*   /\* Get a key from disacarded bits *\/ */
 		SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);
 		/* use key to encrypt output */
-		AES_set_encrypt_key(hash_buffer, 128, &wctx);
-		AES_encrypt(bitbuffer, bitbuffer_old, &wctx);
+		/* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
+		/* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
+		aes_init(hash_buffer, sizeof(hash_buffer), &en);
+		aes_len = sizeof(bitbuffer);
+		ciphertext = aes_encrypt(&en, bitbuffer, &aes_len);
 		/* yay, send it to the output! */
-		fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
+		fwrite(ciphertext,sizeof(ciphertext[0]),aes_len,output);
+		free(ciphertext);
 	      }
 	    } else {
 	      /* xor with old data */
