@@ -62,6 +62,7 @@ uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 uint32_t frequency = DEFAULT_FREQUENCY;
 int opt;
 int redirect_output = 0;
+int gflags_encryption = 0;
 int device_count;
 /* daemon */
 int uid = -1, gid = -1;
@@ -90,21 +91,22 @@ void usage(void)
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage: rtl_entropy [options]\n"
-	  "\t[-b daemonize]\n"
-	  "\t[-d device_index (default: 0)]\n"
-	  "\t[-f set frequency to listen (default: 54MHz )]\n"
-	  "\t[-s samplerate (default: 2048000 Hz)]\n"
-	  "\t[-o output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
-	  "\t[-p pid file] (default: /var/run/rtl_entropy.pid)\n"
-	  "\t[-u user to run as] (default: rtl_entropy)\n"
-	  "\t[-g group to run as] (default: rtl_entropy)\n"
+	  "\t[-b Daemonize]\n"
+	  "\t[-d Device index (default: 0)]\n"
+	  "\t[-e Encrypt output\n"
+	  "\t[-f Set frequency to listen (default: 54MHz )]\n"
+	  "\t[-s Samplerate (default: 2048000 Hz)]\n"
+	  "\t[-o Output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
+	  "\t[-p PID file] (default: /var/run/rtl_entropy.pid)\n"
+	  "\t[-u User to run as] (default: rtl_entropy)\n"
+	  "\t[-g Group to run as] (default: rtl_entropy)\n"
 	  );
   exit(EXIT_SUCCESS);
 }
 
 
 void parse_args(int argc, char ** argv) {
-  char *arg_string= "d:f:g:o:p:s:u:hb";
+  char *arg_string= "d:ef:g:o:p:s:u:hb";
     
   opt = getopt(argc, argv, arg_string);
   while (opt != -1) {
@@ -115,6 +117,10 @@ void parse_args(int argc, char ** argv) {
       
     case 'd':
       dev_index = atoi(optarg);
+      break;
+
+    case 'e':
+      gflags_encryption = 1;
       break;
       
     case 'f':
@@ -264,7 +270,7 @@ int main(int argc, char **argv)
   r = rtlsdr_open(&dev, dev_index);
   if (r < 0) {
     log_line(LOG_DEBUG, "Failed to open rtlsdr device #%d.", dev_index);
-    exit(1);
+    exit(EXIT_FAILURE);
   }
 
   /* Setup Signal handlers */
@@ -309,8 +315,13 @@ int main(int argc, char **argv)
     if (do_exit == SIGPIPE) {
       log_line(LOG_DEBUG, "Reader went away, closing FIFO");
       fclose(output);
-      log_line(LOG_DEBUG, "Waiting for a Reader...");
-      output = fopen(DEFAULT_OUT_FILE,"w");
+      if (gflags_detach) {
+	log_line(LOG_DEBUG, "Waiting for a Reader...");
+	output = fopen(DEFAULT_OUT_FILE,"w");
+      }
+      else {
+	break;
+      }
     }
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
     if (r < 0) {
@@ -366,20 +377,25 @@ int main(int argc, char **argv)
 	     Can now send it to FIPS! */
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
 	  if (!fips_result) {
-	    if (hash_loop) {
-	      /*   /\* Get a key from disacarded bits *\/ */
-	      SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);       
-	      /* use key to encrypt output */
-	      AES_set_encrypt_key(hash_buffer, 128, &wctx);
-	      AES_encrypt(bitbuffer, bitbuffer_old, &wctx);
-	      /* yay, send it to the output! */
+	    if (gflags_encryption) {
+	      if (hash_loop) {
+		/*   /\* Get a key from disacarded bits *\/ */
+		SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);
+		/* use key to encrypt output */
+		AES_set_encrypt_key(hash_buffer, 128, &wctx);
+		AES_encrypt(bitbuffer, bitbuffer_old, &wctx);
+		/* yay, send it to the output! */
+		fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
+	      }
+	    } else {
+	      /* xor with old data */
+	      for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
+		bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
+	      }
 	      fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
+	      /* swap old data */
+	      memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	    }
-	    /* xor with old data */
-	    /* for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) { */
-	    /*   bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter]; */
-	    /* }  */
-	    /* fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);  	  */
 	  } else {   /* FIPS test failed */
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
@@ -389,7 +405,6 @@ int main(int argc, char **argv)
 	    }
 	  }
 	  /* reset buffers, and the counter */
-	  memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;

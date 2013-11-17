@@ -67,6 +67,9 @@ If you specify an output file with -o, rtl_entropy will open not attempt to crea
 To Do
 -----
 
+* report failures when in daemon mode.
+
+
 * Code Review
 * Break things out of main()
 
