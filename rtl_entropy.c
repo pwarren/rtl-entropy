@@ -265,17 +265,15 @@ int main(int argc, char **argv) {
   log_line(LOG_DEBUG, "Found %d device(s):", device_count);
   for (i = 0; i <(unsigned int)device_count; i++)
     log_line(LOG_DEBUG, "  %d:  %s", i, rtlsdr_get_device_name(i));
-    
-  log_line(LOG_DEBUG, "Using device %d: %s",
-	  dev_index,
-	  rtlsdr_get_device_name(dev_index));
+  log_line(LOG_DEBUG, "Using device %d: %s", dev_index,
+	   rtlsdr_get_device_name(dev_index));
   
   r = rtlsdr_open(&dev, dev_index);
   if (r < 0) {
     log_line(LOG_DEBUG, "Failed to open rtlsdr device #%d.", dev_index);
     exit(EXIT_FAILURE);
   }
-
+  
   /* Setup Signal handlers */
   sigact.sa_handler = sighandler;
   sigemptyset(&sigact.sa_mask);
@@ -303,7 +301,7 @@ int main(int argc, char **argv) {
   gains = malloc(sizeof(int) * gain_count);
   gain_count = rtlsdr_get_tuner_gains(dev, gains);
   
-  gain_index = 0;
+  gain_index = gain_count;
   log_line(LOG_DEBUG, "Setting gain to %.1f", (float)gains[gain_index]/10);
   
   /* Manual gain mode */
