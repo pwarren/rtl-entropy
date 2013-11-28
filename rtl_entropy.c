@@ -64,6 +64,8 @@ int opt;
 int redirect_output = 0;
 int gflags_encryption = 0;
 int device_count;
+float gain = 1000.0;
+
 /* daemon */
 int uid = -1, gid = -1;
 
@@ -107,11 +109,15 @@ void usage(void) {
 
 
 void parse_args(int argc, char ** argv) {
-  char *arg_string= "d:ef:g:o:p:s:u:hb";
+  char *arg_string= "a:d:ef:g:o:p:s:u:hb";
     
   opt = getopt(argc, argv, arg_string);
   while (opt != -1) {
     switch (opt) {
+    case 'a':
+      gain = (int)(atof(optarg) * 10);
+      break;
+
     case 'b':
       gflags_detach = 1;
       break;
@@ -224,6 +230,31 @@ void route_output(void) {
   }
 }
 
+int nearest_gain(int target_gain){
+  int i, err1, err2, count, close_gain;
+  int* gains;
+  count = rtlsdr_get_tuner_gains(dev, NULL);
+  if (count <= 0) {
+    return 0;
+  }
+  gains = malloc(sizeof(int) * count);
+  count = rtlsdr_get_tuner_gains(dev, gains);
+  close_gain = gains[0];
+  log_line(LOG_DEBUG,"Your device is capable of gains at...");
+  for (i=0; i<count; i++) {
+    log_line(LOG_DEBUG," : %0.2f", gains[i]/10.0);
+    err1 = abs(target_gain - close_gain);
+    err2 = abs(target_gain - gains[i]);
+    if (err2 < err1) {
+      close_gain = gains[i];
+    }
+  }
+  free(gains);
+  return close_gain;
+}
+
+
+
 int main(int argc, char **argv) {
   struct sigaction sigact;
   int n_read;
@@ -233,9 +264,6 @@ int main(int argc, char **argv) {
   uint8_t *ciphertext;
   uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
   int ch, ch2;
-  int* gains;
-  unsigned int gain_count = 0;
-  int gain_index = 0;
   int fips_result;
   int aes_len;
   
@@ -297,21 +325,15 @@ int main(int argc, char **argv) {
   log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
   r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
   
-  gain_count = rtlsdr_get_tuner_gains(dev, NULL);
-  gains = malloc(sizeof(int) * gain_count);
-  gain_count = rtlsdr_get_tuner_gains(dev, gains);
-  
-  gain_index = gain_count;
-  log_line(LOG_DEBUG, "Setting gain to %.1f", (float)gains[gain_index]/10);
-  
+  gain = nearest_gain(gain);
+  log_line(LOG_DEBUG, "Setting gain to %0.2f", gain/10.0);
   /* Manual gain mode */
   r = rtlsdr_set_tuner_gain_mode(dev, 1);
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Failed to set manual gain");
-  r = rtlsdr_set_tuner_gain(dev, gains[gain_index]);
+  r = rtlsdr_set_tuner_gain(dev, gain);
   if (r < 0)
     log_line(LOG_DEBUG, "WARNING: Failed to set gain");
-  free(gains);
   
   log_line(LOG_DEBUG, "Doing FIPS init");
   fips_init(&fipsctx, (int)0);
