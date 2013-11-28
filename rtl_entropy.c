@@ -364,11 +364,8 @@ int main(int argc, char **argv) {
     /* for each byte in the rtl-sdr read buffer
        pick least significant 6 bits
        for now:
-       debias and store in the write buffer till it's full
-       xor with old data and write to output
-
-       soon will be: 
-       debias, storing useful bits in write buffer, and discarded bits in hash buffer
+       debias, storing useful bits in write buffer, 
+       and discarded bits in hash buffer
        until the write buffer is full.
        create a key by SHA512() hashing the hash buffer
        encrypt write buffer with key
@@ -405,7 +402,7 @@ int main(int argc, char **argv) {
 	     Can now send it to FIPS! */
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
 	  if (!fips_result) {
-	    if (gflags_encryption) {
+	    if (gflags_encryption != 0) {
 	      if (hash_loop) {
 		/*   /\* Get a key from disacarded bits *\/ */
 		SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);

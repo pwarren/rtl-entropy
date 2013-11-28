@@ -1,7 +1,7 @@
 rtl-entropy
 ===========
 
-rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing runs it throught the FIPS 140-2 tests, then does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
+rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing runs it throught the FIPS 140-2 tests, then optionally (-e) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
 
 If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio. 
 
@@ -14,8 +14,8 @@ Dependencies
 
 * [rtl-sdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 * libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
-* pkgconfig - Or edit the Makefile to find your rtl-sdr header files.
 * openssl
+* pkgconfig - Or edit the Makefile to find your rtl-sdr header and openssl header files.
 
 Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: -DDETACH_KERNEL_DRIVER
 
@@ -46,9 +46,9 @@ and press CTRL+C to stop, and do whatever you like with it.
 
 or
 
-./rtl_entropy -s 2.4M -f 101.5M | rngtest -c 1280 -p > high_entropy.bin
+./rtl_entropy -s 2.4M -f 101.5M -e | rngtest -c 1280 -p > high_entropy.bin
 
-to set the sample rate to 2.4Msamples/s and the frequency to tune to as 101.5 MHz, piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
+to set the sample rate to 2.4Msamples/s. the frequency to tune to as 101.5 MHz and do kaminsky debiasing (encryption), piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
 
 You should be able to use rndaddentropy from [twuewand](http://github.com/rfinnie/twuewand)
 
@@ -66,9 +66,6 @@ If you specify an output file with -o, rtl_entropy will open not attempt to crea
 
 To Do
 -----
-
-* report failures when in daemon mode.
-
 
 * Code Review
 * Break things out of main()
@@ -94,7 +91,7 @@ Contributions from projectgus: https://github.com/projectgus
 
 Uses code from:
 
-  * rtl_test. Copyright (C) 2012 by Steve Markgraf http://sdr.osmocom.org/trac/wiki/rtl-sdr
+  * rtl-sdr. Copyright (C) 2012 by Steve Markgraf http://sdr.osmocom.org/trac/wiki/rtl-sdr
   * rng-test-4. Copyright (C) 2001 Philipp Rumpf http://sourceforge.net/projects/gkernel/
   * http://openfortress.org/cryptodoc/random/noise-filter.c by Rick van Rein
   * snd-egd http://code.google.com/p/snd-egd/
@@ -108,7 +105,7 @@ Cryptography Discussion
 
 As I mentioned above, capturing atmospheric radio is not terribly secure, if someone can transmit over the bandwidth you're listening on they could potentially influence the entropy your getting, and be able then to guess at your private keys!
 
-To combat this, I'm proposing to do Kaminsky debiasing, which will dramatically alter the output if the input differs slightly. What this debiasing step does is take the bits rejected from the von neumann filter and create a SHA512 hash from those bits, then encrypt the entropy from the von nuemann filter using the hash as the key.
+To combat this, there's n option (-e) to do Kaminsky debiasing, which will dramatically alter the output if the input differs slightly. What this debiasing step does is take the bits rejected from the von neumann filter and create a SHA512 hash from those bits, then encrypt the entropy from the von nuemann filter using the hash as the key.
 
 This makes the output much harder for an attacker to guess, entropy output will differ unpredictably for the attacker as they have to know the quantisation limits of your ADC to know which bits will be used where!
 
