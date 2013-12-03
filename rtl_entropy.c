@@ -30,9 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
-#include <sys/capability.h>
-#include <sys/types.h>
-#include <sys/prctl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -44,6 +41,8 @@
 #include <sys/time.h>
 #else
 #include <time.h>
+#include <sys/capability.h>
+#include <sys/prctl.h>
 #endif
 
 #include "rtl-sdr.h"
@@ -94,15 +93,17 @@ void usage(void) {
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage: rtl_entropy [options]\n"
-	  "\t[-b Daemonize]\n"
 	  "\t[-d Device index (default: 0)]\n"
 	  "\t[-e Encrypt output\n"
 	  "\t[-f Set frequency to listen (default: 70MHz )]\n"
 	  "\t[-s Samplerate (default: 3200000 Hz)]\n"
 	  "\t[-o Output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
+#ifndef __APPLE__
 	  "\t[-p PID file] (default: /var/run/rtl_entropy.pid)\n"
+	  "\t[-b Daemonize]\n"
 	  "\t[-u User to run as] (default: rtl_entropy)\n"
 	  "\t[-g Group to run as] (default: rtl_entropy)\n"
+#endif
 	  );
   exit(EXIT_SUCCESS);
 }
@@ -176,6 +177,7 @@ static void sighandler(int signum)
   do_exit = signum;
 }
 
+#ifndef __APPLE__
 static void drop_privs(int uid, int gid)
 {
   cap_t caps;
@@ -191,7 +193,7 @@ static void drop_privs(int uid, int gid)
     suicide("cap_set_proc failed");
   cap_free(caps);
 }
-
+#endif
 
 void store_hash_data(int bit) {
   /* store data in a sort of ring buffer */
@@ -270,7 +272,9 @@ int main(int argc, char **argv) {
   parse_args(argc, argv);
   
   if (gflags_detach) {
+#ifndef __APPLE__
     daemonize();
+#endif
   }
   log_line(LOG_INFO,"Options parsed, continuing.");
   
@@ -279,10 +283,11 @@ int main(int argc, char **argv) {
   
   if (!redirect_output)
     output = stdout;
-  
+#ifndef __APPLE__  
   if (uid != -1 && gid != -1)
     drop_privs(uid, gid);
-  
+#endif
+
   /* get to the important stuff! */
   buffer = malloc(out_block_size * sizeof(uint8_t));
   device_count = rtlsdr_get_device_count();

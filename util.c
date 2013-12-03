@@ -80,6 +80,7 @@ void write_pidfile(void)
   fclose(fh);
 }
 
+#ifndef __APPLE__
 void daemonize(void)
 {
   if (daemon(0, 0) == -1)
@@ -87,7 +88,7 @@ void daemonize(void)
   
   write_pidfile();
 }
-
+#endif
 
 double atofs(char* f)
 /* standard suffixes */
