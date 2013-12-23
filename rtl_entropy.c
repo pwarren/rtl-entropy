@@ -59,10 +59,10 @@ static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 uint32_t dev_index = 0;
 uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 uint32_t frequency = DEFAULT_FREQUENCY;
-int opt;
+int opt = 0;
 int redirect_output = 0;
 int gflags_encryption = 0;
-int device_count;
+int device_count = 0;
 float gain = 1000.0;
 
 /* daemon */
@@ -93,16 +93,16 @@ void usage(void) {
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage: rtl_entropy [options]\n"
-	  "\t[-d Device index (default: 0)]\n"
-	  "\t[-e Encrypt output\n"
-	  "\t[-f Set frequency to listen (default: 70MHz )]\n"
-	  "\t[-s Samplerate (default: 3200000 Hz)]\n"
-	  "\t[-o Output file] (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
+	  "\t-d Device index (default: 0)\n"
+	  "\t-e Encrypt output\n"
+	  "\t-f Set frequency to listen (default: 70MHz )\n"
+	  "\t-s Samplerate (default: 3200000 Hz)\n"
+	  "\t-o Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
 #ifndef __APPLE__
-	  "\t[-p PID file] (default: /var/run/rtl_entropy.pid)\n"
-	  "\t[-b Daemonize]\n"
-	  "\t[-u User to run as] (default: rtl_entropy)\n"
-	  "\t[-g Group to run as] (default: rtl_entropy)\n"
+	  "\t-p PID file (default: /var/run/rtl_entropy.pid)\n"
+	  "\t-b Daemonize\n"
+	  "\t-u User to run as (default: rtl_entropy)\n"
+	  "\t-g Group to run as (default: rtl_entropy)\n"
 #endif
 	  );
   exit(EXIT_SUCCESS);
@@ -315,8 +315,7 @@ int main(int argc, char **argv) {
   sigaction(SIGTERM, &sigact, NULL);
   sigaction(SIGQUIT, &sigact, NULL);
   sigaction(SIGPIPE, &sigact, NULL);
-  sigaction(SIGKILL, &sigact, NULL);
-  
+    
   /* Set the sample rate */
   r = rtlsdr_set_sample_rate(dev, samp_rate);
   if (r < 0)
@@ -419,7 +418,9 @@ int main(int argc, char **argv) {
 		ciphertext = aes_encrypt(&en, bitbuffer, &aes_len);
 		/* yay, send it to the output! */
 		fwrite(ciphertext,sizeof(ciphertext[0]),aes_len,output);
+		/* Clean up */
 		free(ciphertext);
+		EVP_CIPHER_CTX_cleanup(&en);
 	      }
 	    } else {
 	      /* xor with old data */
