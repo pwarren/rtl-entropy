@@ -71,7 +71,7 @@ IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX)
 # Find build dependencies
 ########################################################################
 find_package(LibRTLSDR)
-find_package(LibbladeRF)
+#find_package(LibbladeRF)
 find_package(OpenSSL)
 find_package(LibCAP)
 ########################################################################
