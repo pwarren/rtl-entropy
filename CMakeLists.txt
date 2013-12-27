@@ -37,18 +37,22 @@ if(NOT CMAKE_BUILD_TYPE)
 endif(NOT CMAKE_BUILD_TYPE)
 set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "")
 
+if(NOT EXEC_INSTALL_DIR)
+  set(EXEC_INSTALL_DIR bin)
+endif()
+
 # Set the version information here
 set(VERSION_INFO_MAJOR_VERSION 0)
-set(VERSION_INFO_API_COMPAT    1)
 set(VERSION_INFO_MINOR_VERSION 1)
-set(VERSION_INFO_MAINT_VERSION git)
+set(VERSION_INFO_PATCH_VERSION 1)
+include(Version)
 
 ########################################################################
 # Compiler specific setup
 ########################################################################
 
 IF(CMAKE_CXX_COMPILER MATCHES ".*clang")
-    SET(CMAKE_COMPILER_IS_CLANGXX 1)
+  SET(CMAKE_COMPILER_IS_CLANGXX 1)
 ENDIF()
 
 IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX)
@@ -74,6 +78,7 @@ find_package(LibRTLSDR)
 #find_package(LibbladeRF)
 find_package(OpenSSL)
 find_package(LibCAP)
+
 ########################################################################
 # Setup the include and linker paths
 ########################################################################
@@ -92,16 +97,36 @@ link_directories(
 add_subdirectory(src)
 
 ########################################################################
+# Create uninstall target
+########################################################################
+configure_file(
+    ${CMAKE_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+@ONLY)
+
+add_custom_target(uninstall
+    ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+)
+
+
+########################################################################
 # Create Pkg Config File
 ########################################################################
+set(prefix ${CMAKE_INSTALL_PREFIX})
+set(exec_prefix \${prefix}/bin)
+set(libdir \${prefix}/lib)
+set(includedir \${prefix}/include)
+
 CONFIGURE_FILE(
     ${CMAKE_CURRENT_SOURCE_DIR}/rtl-entropy.pc.in
     ${CMAKE_CURRENT_BINARY_DIR}/rtl-entropy.pc
 @ONLY)
 
+
+
 INSTALL(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/rtl-entropy.pc
-    DESTINATION ${GR_LIBRARY_DIR}/pkgconfig
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/pkgconfig
 )
 
 ########################################################################

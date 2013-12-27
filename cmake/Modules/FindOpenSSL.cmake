@@ -7,12 +7,9 @@
 #  OPENSSL_DEFINITIONS - Compiler switches required for using OpenSSL
 #
 #  Copyright (c) 2009-2010 Andreas Schneider <mail@cynapses.org>
-#
-#  Redistribution and use is allowed according to the terms of the New
-#  BSD license.
-#  For details see the accompanying COPYING-CMAKE-SCRIPTS file.
-#
-
+# 
+#  Appears to be GPL as at 2013-12-27
+#  from http://xtalopt.openmolecules.net/wiki/index.fcgi/browser
 
 if (OPENSSL_LIBRARIES AND OPENSSL_INCLUDE_DIRS)
   # in cache already

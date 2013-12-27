@@ -15,7 +15,7 @@ Dependencies
 * [rtl-sdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
 * libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
 * openssl
-* pkgconfig - Or edit the Makefile to find your rtl-sdr header and openssl header files.
+* pkg-config
 
 Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: -DDETACH_KERNEL_DRIVER
 
@@ -34,9 +34,13 @@ then install as normal.
 Build
 -----
 
+mkdir build
+
+cmake ../
+
 make 
 
-Assumes you've got the dependancies installed, cmake coming Real Soon Now (TM).
+sudo make install
 
 Usage
 -----

@@ -1,15 +1,12 @@
 prefix=@CMAKE_INSTALL_PREFIX@
-exec_prefix=${prefix}
-libdir=${exec_prefix}/@RTL_LIBRARY_DIR@
-includedir=${prefix}/@RTL_INCLUDE_DIR@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
 
-Name: @CPACK_PACKAGE_NAME@
-Description: @CPACK_PACKAGE_DESCRIPTION_SUMMARY@
+Name: RTL-Entropy
+Description: An entropy gathering SDR application 
 URL: http://github.com/pwarren/rtl-entropy
-Version: @CPACK_PACKAGE_VERSION@
+Version: @VERSION@
 Requires: openssl libpcap
-Requires.private: 
-Conflicts:
-Cflags: -I${includedir} @RTL_OSMOSDR_PC_CFLAGS@
+Cflags: -I${includedir} 
 Libs: -L${libdir}
-Libs.private: @RTL_OSMOSDR_PC_LIBS@
