@@ -20,7 +20,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-#along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ########################################################################
 # Project setup
@@ -68,14 +68,13 @@ IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX)
       ADD_DEFINITIONS(-fvisibility=hidden)
       ADD_DEFINITIONS(-fvisibility-inlines-hidden)
     ENDIF(NOT WIN32)
-    ADD_DEFINITIONS(${OPENSSL_DEFINITIONS})
   ENDIF()
 
 ########################################################################
 # Find build dependencies
 ########################################################################
 find_package(LibRTLSDR)
-#find_package(LibbladeRF)
+find_package(LibbladeRF)
 find_package(OpenSSL)
 find_package(LibCAP)
 
