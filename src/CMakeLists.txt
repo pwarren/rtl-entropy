@@ -5,18 +5,20 @@ add_library(rtlentropylib ${LIBSRC})
 if(LIBRTLSDR_FOUND)
   add_executable(rtl_entropy rtl_entropy.c)
   target_link_libraries(rtl_entropy rtlentropylib ${OPENSSL_LIBRARIES} ${LibCAP_LIBRARY} ${LIBRTLSDR_LIBRARIES})
-
-
+  set(INSTALL_TARGETS rtl_entropy)
 endif(LIBRTLSDR_FOUND)
 
 if(LIBBLADERF_FOUND)
   add_executable(brf_entropy brf_entropy.c)
   target_link_libraries(brf_entropy rtlentropylib ${OPENSSL_LIBRARIES} ${LibCAP_LIBRARY} ${LIBBLADERF_LIBRARIES})
-
+  set(INSTALL_TARGETS brf_entropy)
 endif(LIBBLADERF_FOUND)
 
 
-set(INSTALL_TARGETS rtl_entropy brf_entropy)
+if (LIBBLADERF_FOUND AND LIBRTLSDR_FOUND)
+  set(INSTALL_TARGETS rtl_entropy brf_entropy)
+endif()
+
 
 
 install(TARGETS ${INSTALL_TARGETS}
