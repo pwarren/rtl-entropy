@@ -1,5 +1,5 @@
 /*
- * rtl-entropy, turns your Realtek RTL2832 based DVB dongle into a
+ * brf-entropy, turns your BladeRF into a high bandwidth,
  * high quality entropy source.
  *
  * Copyright (C) 2013 by Paul Warren <pwarren@pwarren.id.au>
