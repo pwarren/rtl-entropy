@@ -37,6 +37,7 @@
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 
+
 #ifdef __APPLE__
 #include <sys/time.h>
 #else
@@ -74,15 +75,10 @@ FILE *output = NULL;
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
 unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
-unsigned char hash_buffer[SHA512_DIGEST_LENGTH] = {0};
-unsigned char hash_data_buffer[SHA512_DIGEST_LENGTH] = {0};
 
 /* Counters */
 unsigned int bitcounter = 0;
 unsigned int buffercounter = 0;
-unsigned int hash_data_counter = 0;
-unsigned int hash_data_bit_counter = 0;
-unsigned int hash_loop = 0;
 
 /* Other bits */
 AES_KEY wctx;
@@ -196,25 +192,6 @@ static void drop_privs(int uid, int gid)
   cap_free(caps);
 }
 #endif
-
-void store_hash_data(int bit) {
-  /* store data in a sort of ring buffer */
-  if (bit) {
-    hash_data_buffer[hash_data_counter] |= 1 << hash_data_bit_counter;
-  } else {
-    hash_data_buffer[hash_data_counter] &= ~(1 << hash_data_bit_counter);
-  }
-  hash_data_bit_counter++;
-  if (hash_data_bit_counter == sizeof(hash_data_buffer[0]) * 8) {
-    hash_data_bit_counter = 0;
-    hash_data_counter++;
-  }
-  
-  if (hash_data_counter == SHA512_DIGEST_LENGTH) {
-    hash_data_counter = 0;      
-    hash_loop=1;
-  }
-}
 
 void route_output(void) {
   /* Redirect output if directed */   

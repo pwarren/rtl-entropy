@@ -73,15 +73,10 @@ FILE *output = NULL;
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
 unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
-unsigned char hash_buffer[SHA512_DIGEST_LENGTH] = {0};
-unsigned char hash_data_buffer[SHA512_DIGEST_LENGTH] = {0};
 
 /* Counters */
 unsigned int bitcounter = 0;
 unsigned int buffercounter = 0;
-unsigned int hash_data_counter = 0;
-unsigned int hash_data_bit_counter = 0;
-unsigned int hash_loop = 0;
 
 /* Other bits */
 AES_KEY wctx;
@@ -196,25 +191,6 @@ static void drop_privs(int uid, int gid)
 }
 #endif
 
-void store_hash_data(int bit) {
-  /* store data in a sort of ring buffer */
-  if (bit) {
-    hash_data_buffer[hash_data_counter] |= 1 << hash_data_bit_counter;
-  } else {
-    hash_data_buffer[hash_data_counter] &= ~(1 << hash_data_bit_counter);
-  }
-  hash_data_bit_counter++;
-  if (hash_data_bit_counter == sizeof(hash_data_buffer[0]) * 8) {
-    hash_data_bit_counter = 0;
-    hash_data_counter++;
-  }
-  
-  if (hash_data_counter == SHA512_DIGEST_LENGTH) {
-    hash_data_counter = 0;      
-    hash_loop=1;
-  }
-}
-
 void route_output(void) {
   /* Redirect output if directed */   
   if (!redirect_output) {
@@ -247,6 +223,8 @@ static void *rx_stream_callback(struct bladerf *dev,
 {
 
   /* Do stuff with the samples buffer */
+  buffercounter += debias(samples, bitbuffer, hash_data_buffer, num_samples);
+  
   
 }
 
@@ -264,6 +242,7 @@ int main(int argc, char **argv) {
   int ch, ch2;
   int fips_result;
   int aes_len;
+  
   
   fprintf(stderr,"Not doing anything right now!\n");
   exit(EXIT_SUCCESS);
@@ -302,17 +281,17 @@ int main(int argc, char **argv) {
   /* Is FPGA ready? */
   r = bladerf_is_fpga_configured(dev);
   if (r < 0) {
-    fprintf(stderr, "Failed to determine if FPGA is loaded: %s\n",
-	    bladerf_strerror(r));
+    log_line(LOG_DEBUG, "Failed to determine if FPGA is loaded: %s\n",
+	     bladerf_strerror(r));
     exit(EXIT_FAILURE);
   } else if (r == 0) {
-    fprintf(stderr, "FPGA is not loaded. Aborting.\n");
+    log_line(LOG_DEBUG, "FPGA is not loaded. Aborting.\n");
     exit(EXIT_FAILURE);
   }
 
   /* Open device */
   bladerf_open(&dev, NULL);
-      
+  
   /* Set the sample rate */
   r = bladerf_set_sample_rate(dev, BLADERF_MODULE_RX, samp_rate, &actual_samp_rate);
   log_line(LOG_DEBUG, "Sample rate set to %d", actual_samp_rate);
@@ -346,11 +325,11 @@ int main(int argc, char **argv) {
 
   r = bladerf_enable_module(dev, BLADERF_MODULE_RX, true);
   if (r < 0) {
-    fprintf(stderr, "Failed to enable RX module: %s\n",
-	    bladerf_strerror(r));
+    log_line(LOG_DEBUG, "Failed to enable RX module: %s",
+	     bladerf_strerror(r));
     exit(EXIT_FAILURE);
   } else {
-    printf("Enabled RX module\n");
+    log_line(LOG_DEBUG,"Enabled RX module");
   }
 
   /* Initialise the receive stream */
@@ -366,8 +345,9 @@ int main(int argc, char **argv) {
   */
 
   if (r < 0) {
-    fprintf(stderr, "Failed to initialize RX stream: %s\n",
+    log_line(LOG_DEBUG, "Failed to initialize RX stream: %s\n",
 	    bladerf_strerror(r));
+    bladerf_close(dev);
     exit(EXIT_FAILURE);
   }
 
@@ -387,88 +367,9 @@ int main(int argc, char **argv) {
 	break;
       }
     }
-    
-    /* for each byte in the rtl-sdr read buffer
-       pick least significant 6 bit
-       for now:
-       debias, storing useful bits in write buffer, 
-       and discarded bits in hash buffer
-       until the write buffer is full.
-       create a key by SHA512() hashing the hash buffer
-       encrypt write buffer with key
-       output encrypted buffer
-       
-    */
-    for (i=0; i < n_read * sizeof(buffer[0]); i++) {
-      for (j=0; j < 6; j+= 2) {
-	ch = (buffer[i] >> j) & 0x01;
-	ch2 = (buffer[i] >> (j+1)) & 0x01;
-	if (ch != ch2) {
-	  if (ch) {
-	    /* store a 1 in our bitbuffer */
-	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	  } /* else, leave the buffer alone, it's already 0 at this bit */
-	  bitcounter++;
-	} else {
-	  if (ch) {
-	    store_hash_data(1);
-	  } else {
-	    store_hash_data(0);
-	  }
-	}
-	
-	/* is byte full? */
-	if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
-	  buffercounter++;
-	  bitcounter = 0;
-	}
-	
-	/* is buffer full? */
-	if (buffercounter > BUFFER_SIZE) {
-	  /* We have 2500 bytes of entropy 
-	     Can now send it to FIPS! */
-	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
-	  if (!fips_result) {
-	    if (gflags_encryption != 0) {
-	      if (hash_loop) {
-		/*   /\* Get a key from disacarded bits *\/ */
-		SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);
-		/* use key to encrypt output */
-		/* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
-		/* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
-		aes_init(hash_buffer, sizeof(hash_buffer), &en);
-		aes_len = sizeof(bitbuffer);
-		ciphertext = aes_encrypt(&en, bitbuffer, &aes_len);
-		/* yay, send it to the output! */
-		fwrite(ciphertext,sizeof(ciphertext[0]),aes_len,output);
-		/* Clean up */
-		free(ciphertext);
-		EVP_CIPHER_CTX_cleanup(&en);
-	      }
-	    } else {
-	      /* xor with old data */
-	      for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
-		bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
-	      }
-	      fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
-	      /* swap old data */
-	      memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
-	    }
-	  } else {   /* FIPS test failed */
-	    for (j=0; j< N_FIPS_TESTS; j++) {
-	      if (fips_result & fips_test_mask[j]) {
-		if (!gflags_detach)
-		  log_line(LOG_DEBUG, "Failed: %s", fips_test_names[j]);
-	      }
-	    }
-	  }
-	  /* reset buffers, and the counter */
-	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
-	  memset(bitbuffer,0,sizeof(bitbuffer));
-	  buffercounter = 0;
-	}
-      }
-    }
+
+    /* do stuff forever here! */ 
+
   }
   if (do_exit) {
     log_line(LOG_DEBUG, "\nUser cancel, exiting...");
@@ -476,7 +377,8 @@ int main(int argc, char **argv) {
     log_line(LOG_DEBUG, "\nLibrary error %d, exiting...", r);
   }
   
-  rtlsdr_close(dev);
+  bladerf_deinit_stream(stream);
+  bladerf_close(dev);
   free(buffer);
   fclose(output);
   return 0;

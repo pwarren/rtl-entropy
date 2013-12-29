@@ -36,6 +36,12 @@
 
 char *pidfile_path = DEFAULT_PID_FILE;
 
+unsigned char hash_buffer[SHA512_DIGEST_LENGTH] = {0};
+unsigned char hash_data_buffer[SHA512_DIGEST_LENGTH] = {0};
+unsigned int hash_data_counter = 0;
+unsigned int hash_data_bit_counter = 0;
+unsigned int hash_loop = 0;
+
 int parse_user(char *username, int *gid)
 {
   int t;
@@ -150,4 +156,31 @@ unsigned char *aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int *len
   *len = c_len + f_len;
   return ciphertext;
 }
+
+
+void store_hash_data(int bit) {
+  /* store data in a sort of ring buffer */
+  if (bit) {
+    hash_data_buffer[hash_data_counter] |= 1 << hash_data_bit_counter;
+  } else {
+    hash_data_buffer[hash_data_counter] &= ~(1 << hash_data_bit_counter);
+  }
+  hash_data_bit_counter++;
+  if (hash_data_bit_counter == sizeof(hash_data_buffer[0]) * 8) {
+    hash_data_bit_counter = 0;
+    hash_data_counter++;
+  }
+  
+  if (hash_data_counter == SHA512_DIGEST_LENGTH) {
+    hash_data_counter = 0;
+    hash_loop=1;
+  }
+}
+
+
+int debias(void *in_buffer, void *out_buffer, void* discard_buffer, size_t num_samples) {
+  /* Returns the number of bits added to out_buffer, after debiasing in_buffer */
+  return 0;
+}
+
 

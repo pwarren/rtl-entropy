@@ -16,8 +16,12 @@
  */
 
 #include <openssl/evp.h>
+#include <openssl/sha.h>
 
 extern char *pidfile_path;
+extern unsigned char hash_buffer[SHA512_DIGEST_LENGTH];
+extern unsigned char hash_data_buffer[SHA512_DIGEST_LENGTH];
+extern unsigned int hash_loop;
 
 int parse_user(char *username, int *gid);
 int parse_group(char *groupname);
@@ -26,3 +30,7 @@ void daemonize(void);
 double atofs(char* f);
 int aes_init(unsigned char *key_data, int key_data_len, EVP_CIPHER_CTX *e_ctx);
 unsigned char *aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int *len);
+void store_hash_data(int bit);
+int debias(void *in_buffer, void *out_buffer, void *discard_buffer, size_t num_samples);
+
+
