@@ -223,7 +223,7 @@ static void *rx_stream_callback(struct bladerf *dev,
 {
 
   /* Do stuff with the samples buffer */
-  buffercounter += debias(samples, bitbuffer, hash_data_buffer, num_samples);
+  buffercounter += debias(samples, bitbuffer, num_samples, BLADERF_FORMAT_SC16_Q12);
   
   
 }

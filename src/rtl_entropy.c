@@ -355,6 +355,9 @@ int main(int argc, char **argv) {
        output encrypted buffer
        
     */
+
+    /* debias(buffer, bitbuffer, n_read, sizeof(buffer[0])); */
+
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
       for (j=0; j < 6; j+= 2) {
 	ch = (buffer[i] >> j) & 0x01;

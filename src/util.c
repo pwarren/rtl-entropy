@@ -178,9 +178,38 @@ void store_hash_data(int bit) {
 }
 
 
-int debias(void *in_buffer, void *out_buffer, void* discard_buffer, size_t num_samples) {
-  /* Returns the number of bits added to out_buffer, after debiasing in_buffer */
+int debias(void *in_buffer, void *out_buffer, size_t count, size_t size) {
+  /* Returns the number of 'size' items added to out_buffer, after debiasing 
+     in_buffer */
+  
+  unsigned int i,j;
+  int ch, ch2;
+  int bitcounter, buffercounter;
+  
+  /* for (i=0; i < count; i++) { */
+  /*   for (j=0; j < size - 2; j+= 2) { */
+  /*     ch = ((size*)in_buffer[i] >> j) & 0x01; */
+  /*     ch2 = ((size*)in_buffer[i] >> (j+1)) & 0x01; */
+  /*     if (ch != ch2) { */
+  /* 	if (ch) { */
+  /* 	  /\* store a 1 in our bitbuffer *\/ */
+  /* 	  (size *)out_buffer[buffercounter] |= 1 << bitcounter; */
+  /* 	} /\* else, leave the buffer alone, it's already 0 at this bit *\/ */
+  /* 	bitcounter++; */
+  /*     } else { */
+  /* 	if (ch) { */
+  /* 	  store_hash_data(1); */
+  /* 	} else { */
+  /* 	  store_hash_data(0); */
+  /* 	} */
+  /*     } */
+  /*     if (bitcounter >= size_t) { */
+  /* 	buffercounter ++; */
+  /* 	bitcounter = 0; */
+  /*     } */
+  /*   } */
+  /*   return buffercounter; */
+  /* } */
+
   return 0;
 }
-
-
