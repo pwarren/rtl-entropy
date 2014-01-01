@@ -44,7 +44,7 @@ endif()
 # Set the version information here
 set(VERSION_INFO_MAJOR_VERSION 0)
 set(VERSION_INFO_MINOR_VERSION 1)
-set(VERSION_INFO_PATCH_VERSION 1)
+set(VERSION_INFO_PATCH_VERSION 2)
 include(Version)
 
 ########################################################################
