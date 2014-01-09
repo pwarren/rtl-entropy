@@ -31,8 +31,12 @@ cmake ../ -DDETACH_KERNEL_DRIVER
 
 then install as normal.
 
-Build
------
+Installation
+------------
+
+git clone https://github.com/pwarren/rtl-entropy/
+
+cd rtl-entropy
 
 mkdir build
 
@@ -43,6 +47,11 @@ cmake ../
 make 
 
 sudo make install
+
+
+You can also do:
+
+sudo make uninstall
 
 Usage
 -----
@@ -56,11 +65,16 @@ or
 
 to set the sample rate to 2.4Msamples/s. the frequency to tune to as 101.5 MHz and do kaminsky debiasing (encryption), piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
 
-You should be able to use rndaddentropy from [twuewand](http://github.com/rfinnie/twuewand)
 
-./rtl_entropy -s 2.4M -f 101.5M | rndaddentropy
+Please see the output of 
 
-for Daemon mode, along with rngd from rng-tools on linux:
+rtl-entropy -h
+
+for further help!
+
+
+
+For Daemon mode, along with rngd from rng-tools on linux:
 
 rtl_entropy -b
 
@@ -75,7 +89,9 @@ To Do
 
 * Code Review
 * Break things out of main()
-
+* Website and Mailing Lists
+* Look at Maurier tests
+* make FIPS optional
 
 Done!
 -----
@@ -85,8 +101,8 @@ Done!
 * add Kaminsky debiasing to my von neumann debiasing
 * maybe a hash as well?
 * Auto-detach kernel driver
-* Further research and consultation with security experts is needed on:
-
+* Further research and consultation with security experts is needed
+* Do a release!
 
 Credits
 -------
