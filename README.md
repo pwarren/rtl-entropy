@@ -92,6 +92,7 @@ To Do
 * Website and Mailing Lists
 * Look at Maurier tests
 * make FIPS optional
+* directly mix in to kernel as option with daemon mode
 
 Done!
 -----
