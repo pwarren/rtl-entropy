@@ -31,6 +31,6 @@ double atofs(char* f);
 int aes_init(unsigned char *key_data, int key_data_len, EVP_CIPHER_CTX *e_ctx);
 unsigned char *aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int *len);
 void store_hash_data(int bit);
-int debias(void *in_buffer, void *out_buffer, size_t count, size_t size);
+int debias(int16_t one, int16_t two, int bit_index);
 
 
