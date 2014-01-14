@@ -55,7 +55,7 @@
 static int do_exit = 0;
 static fips_ctx_t fipsctx;
 
-uint32_t samp_rate = 8000000;
+uint32_t samp_rate = 40000000;
 int actual_samp_rate = 0;
 uint32_t frequency = 434000000;
 int opt = 0;
@@ -215,36 +215,6 @@ int nearest_gain(int target_gain){
   return target_gain;
 }
 
-/**
- * Peform adjustments on received samples before writing them out:
- *  (1) Mask off FPGA markers
- *  (2) Convert little-endian samples to host endianness, if needed.
- *
- *  @param  buff    Sample buffer
- *  @param  n       Number of samples
- */
-static inline void sc16q12_sample_fixup(int16_t *buf, size_t n)
-{
-  size_t i;
-  
-  for (i = 0; i < n; i++) {
-    /* I - Mask off the marker and sign extend */
-    *buf &= *buf & 0x0fff;
-    if (*buf & 0x800) {
-      *buf |= 0xf000;
-    }
-    buf++;
-    
-    /* Q - Mask off the marker and sign extend */
-    *buf = *buf & 0x0fff;
-    if (*buf & 0x800) {
-      *buf |= 0xf000;
-    }
-    
-    buf++;
-  }
-}
-
 int main(int argc, char **argv) {
   struct sigaction sigact;
   struct bladerf *dev;
@@ -320,7 +290,7 @@ int main(int argc, char **argv) {
     log_line(LOG_DEBUG,"Failed to set sample rate: %s", bladerf_strerror(r));
     exit(EXIT_FAILURE);
   }
-  log_line(LOG_DEBUG, "Sample rate set to %d", actual_samp_rate);
+  log_line(LOG_DEBUG, "Bandwidth rate set to %d", actual_samp_rate);
 
   log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
 
@@ -400,12 +370,8 @@ int main(int argc, char **argv) {
       break;
     }  
     log_line(LOG_DEBUG, "%d Samples read of %d!",r,out_block_size);
-
-    sc16q12_sample_fixup(buffer,r);
-    
-    /* fwrite(buffer,sizeof(buffer[0]),4096,stdout); */
     for (i=0; i < r; i++) {
-      for (j=0; j < 6; j+= 2) {
+      for (j=0; j < 10; j+= 2) {
 	ch = (buffer[i] >> j) & 0x01;
 	ch2 = (buffer[i] >> (j+1)) & 0x01;
 	if (ch != ch2) {
