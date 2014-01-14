@@ -55,14 +55,14 @@
 static int do_exit = 0;
 static fips_ctx_t fipsctx;
 
-uint32_t samp_rate = 15000000;
+uint32_t samp_rate = 8000000;
 int actual_samp_rate = 0;
 uint32_t frequency = 434000000;
 int opt = 0;
 int redirect_output = 0;
 int gflags_encryption = 0;
 int device_count = 0;
-float gain = 100.0;
+float gain = 1000.0;
 
 /* daemon */
 int uid = -1, gid = -1;
@@ -215,6 +215,36 @@ int nearest_gain(int target_gain){
   return target_gain;
 }
 
+/**
+ * Peform adjustments on received samples before writing them out:
+ *  (1) Mask off FPGA markers
+ *  (2) Convert little-endian samples to host endianness, if needed.
+ *
+ *  @param  buff    Sample buffer
+ *  @param  n       Number of samples
+ */
+static inline void sc16q12_sample_fixup(int16_t *buf, size_t n)
+{
+  size_t i;
+  
+  for (i = 0; i < n; i++) {
+    /* I - Mask off the marker and sign extend */
+    *buf &= *buf & 0x0fff;
+    if (*buf & 0x800) {
+      *buf |= 0xf000;
+    }
+    buf++;
+    
+    /* Q - Mask off the marker and sign extend */
+    *buf = *buf & 0x0fff;
+    if (*buf & 0x800) {
+      *buf |= 0xf000;
+    }
+    
+    buf++;
+  }
+}
+
 int main(int argc, char **argv) {
   struct sigaction sigact;
   struct bladerf *dev;
@@ -225,10 +255,9 @@ int main(int argc, char **argv) {
   int fips_result;
   int aes_len;
   unsigned int i, j;
-  int n_read;
   int r;
-  uint16_t *buffer;
-  uint32_t out_block_size = MAXIMAL_BUF_LENGTH * 2;
+  int16_t *buffer;
+  uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
 
    
   parse_args(argc, argv);
@@ -251,7 +280,7 @@ int main(int argc, char **argv) {
 #endif
 
   /* allocate buffers */
-  buffer = malloc(out_block_size * sizeof(int16_t));
+  buffer = malloc(2 * out_block_size * sizeof(int16_t));
 
   /* Setup Signal handlers */
   sigact.sa_handler = sighandler;
@@ -268,13 +297,14 @@ int main(int argc, char **argv) {
   /* Is FPGA ready? */
   r = bladerf_is_fpga_configured(dev);
   if (r < 0) {
-    log_line(LOG_DEBUG, "Failed to determine if FPGA is loaded: %s\n",
+    log_line(LOG_DEBUG, "Failed to determine if FPGA is loaded: %s",
 	     bladerf_strerror(r));
     exit(EXIT_FAILURE);
   } else if (r == 0) {
-    log_line(LOG_DEBUG, "FPGA is not loaded. Aborting.\n");
+    log_line(LOG_DEBUG, "FPGA is not loaded. Aborting.");
     exit(EXIT_FAILURE);
   }
+  log_line(LOG_DEBUG, "FPGA Loaded");
 
   /* Set the sample rate */
   r = bladerf_set_sample_rate(dev, BLADERF_MODULE_RX, samp_rate, &actual_samp_rate);
@@ -285,7 +315,7 @@ int main(int argc, char **argv) {
   log_line(LOG_DEBUG, "Sample rate set to %d", actual_samp_rate);
 
   /* Set the filter bandwidth to the same as the sample rate for now */
-  r = bladerf_set_sample_rate(dev, BLADERF_MODULE_RX, samp_rate, &actual_samp_rate);
+  r = bladerf_set_bandwidth(dev, BLADERF_MODULE_RX, samp_rate, &actual_samp_rate);
   if (r < 0) {
     log_line(LOG_DEBUG,"Failed to set sample rate: %s", bladerf_strerror(r));
     exit(EXIT_FAILURE);
@@ -293,11 +323,6 @@ int main(int argc, char **argv) {
   log_line(LOG_DEBUG, "Sample rate set to %d", actual_samp_rate);
 
   log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
-  r = bladerf_select_band(dev, BLADERF_MODULE_RX, frequency);
-  if (r < 0) {
-    log_line(LOG_DEBUG,"Failed to select band: %s", bladerf_strerror(r));
-    exit(EXIT_FAILURE);
-  }
 
   r = bladerf_set_frequency(dev, BLADERF_MODULE_RX, frequency);
   if (r < 0) {
@@ -307,7 +332,7 @@ int main(int argc, char **argv) {
   
   /* Set gain */
   gain = nearest_gain(gain);
-  r = bladerf_set_rxvga1(dev, gain-150);
+  r = bladerf_set_rxvga1(dev, gain);
   if (r < 0) {
     log_line(LOG_DEBUG,"Failed to set pre gain: %s",bladerf_strerror(r));
     exit(EXIT_FAILURE);
@@ -367,13 +392,19 @@ int main(int argc, char **argv) {
       }
     }
     
-    r = bladerf_rx(dev, BLADERF_FORMAT_SC16_Q12, &buffer, out_block_size, &metadata);
+    r = bladerf_rx(dev, BLADERF_FORMAT_SC16_Q12, buffer, out_block_size, &metadata);
+    
     if (r < 0) {
       log_line(LOG_DEBUG,"Failed to read samples: %s", bladerf_strerror(r));
       do_exit = r;
       break;
     }  
-    for (i=0; i < n_read * sizeof(buffer[0]); i++) {
+    log_line(LOG_DEBUG, "%d Samples read of %d!",r,out_block_size);
+
+    sc16q12_sample_fixup(buffer,r);
+    
+    /* fwrite(buffer,sizeof(buffer[0]),4096,stdout); */
+    for (i=0; i < r; i++) {
       for (j=0; j < 6; j+= 2) {
 	ch = (buffer[i] >> j) & 0x01;
 	ch2 = (buffer[i] >> (j+1)) & 0x01;
