@@ -84,13 +84,13 @@ EVP_CIPHER_CTX en;
 
 void usage(void) {
   fprintf(stderr,
-	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
-	  "Usage: rtl_entropy [options]\n"
-	  "\t-a Set gain (default: max for dongle)\n"
+	  "brf_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
+	  "Usage: brf_entropy [options]\n"
+	  "\t-a Set gain (default: 1000)\n"
 	  "\t-d Device index (default: 0)\n"
 	  "\t-e Encrypt output\n"
-	  "\t-f Set frequency to listen (default: 70MHz )\n"
-	  "\t-s Samplerate (default: 3200000 Hz)\n");
+	  "\t-f Set frequency to listen (default: 434MHz )\n"
+	  "\t-s Samplerate (default: 40 MHz)\n");
   fprintf(stderr,
 	  "\t-o Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
 #ifndef __APPLE__
@@ -275,6 +275,9 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
   log_line(LOG_DEBUG, "FPGA Loaded");
+
+  /* set up verbose logging of libbladerf calls */
+  bladerf_log_set_verbosity(BLADERF_LOG_LEVEL_VERBOSE);
 
   /* Set the sample rate */
   r = bladerf_set_sample_rate(dev, BLADERF_MODULE_RX, samp_rate, &actual_samp_rate);
