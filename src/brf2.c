@@ -30,15 +30,18 @@ static void *rx_stream_callback(struct bladerf *dev,
                          size_t num_samples,
                          void *user_data)
 {
-  void *ret;
   int16_t *bitbuffer;
-  int i ,j, tmp;
+  int i ,j;
   int bitcounter = 0;
   int buffercounter = 0;
   int16_t *sample = (int16_t *)samples;
   int ch, ch2;
-  bitbuffer = malloc(num_samples * sizeof(int16_t));
-  memset(bitbuffer,0,sizeof(bitbuffer));
+  int bufsize = 5500;
+  bitbuffer = malloc(bufsize * sizeof(int16_t));
+  memset(bitbuffer,0,bufsize);
+  
+  buffercounter = 0;
+  bitcounter = 0;
   
   for(i=0; i<num_samples*2; i++) {
     for (j=0; j < 10; j+= 2) {
@@ -50,25 +53,40 @@ static void *rx_stream_callback(struct bladerf *dev,
 	  bitbuffer[buffercounter] |= 1 << bitcounter;
 	} /* else, leave the buffer alone, it's already 0 at this bit */
 	bitcounter++;
-      }	
-
-      /* is byte full? */
+      }
+      
+      /* is int16_t full? */
       if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
 	buffercounter++;
 	bitcounter = 0;
+      }
+
+      /* Not threaadsafe!
+       * if you set bufsize too high, the next callback might 
+       * happen before you get here to write anything to output! 
+       * time for locking, and discarding packets!
+      */
+      
+      if (buffercounter >= bufsize) {
+	fwrite(bitbuffer, 
+	       sizeof(int16_t), 
+	       buffercounter,
+	       stdout);
+	buffercounter = 0;
+	bitcounter = 0;
+	memset(bitbuffer,0,bufsize);
       }
     }
     sample ++;
   }
   
-  fwrite(bitbuffer, 
-	 sizeof(int16_t), 
-	 buffercounter - 1,
-	 stdout);
-
   free(bitbuffer);
-  ret = NULL;
-  return ret;
+
+  if (!do_exit) {
+    return samples;
+  } else {
+    return NULL;
+  }
 }
 
 void * rx_task_run(void *inputs) {
@@ -174,36 +192,32 @@ int main(int argc, char * argv) {
     log_line(LOG_DEBUG,"Enabled RX module");
   }
 
-  while (!do_exit) {
-    /*  Initialise the receive stream */
-    r = bladerf_init_stream(&rx_stream,
-			    device,
-			    rx_stream_callback,
-			    buffer,
-			    2,
-			    BLADERF_FORMAT_SC16_Q12,
-			    samples_per_buffer,
-			    2,
-			    NULL);
-    
-    if (r < 0) {
-      log_line(LOG_DEBUG, "Failed to initialize RX stream: %s\n",
-	       bladerf_strerror(r));
-      bladerf_close(device);
-      exit(EXIT_FAILURE);
-    }
-    
-    r = pthread_create(&rx_task, NULL, rx_task_run, NULL);
-    if (r < 0) {
-      log_line(LOG_DEBUG,"pthread_create failed");
-    }
-    pthread_join(rx_task, NULL);
-    bladerf_deinit_stream(rx_stream);     
+  /*  Initialise the receive stream */
+  r = bladerf_init_stream(&rx_stream,
+			  device,
+			  rx_stream_callback,
+			  buffer,
+			  1,
+			  BLADERF_FORMAT_SC16_Q12,
+			  samples_per_buffer,
+			  1,
+			  NULL);
+  
+  if (r < 0) {
+    log_line(LOG_DEBUG, "Failed to initialize RX stream: %s\n",
+	     bladerf_strerror(r));
+    bladerf_close(device);
+    exit(EXIT_FAILURE);
   }
+  
+  r = pthread_create(&rx_task, NULL, rx_task_run, NULL);
+  if (r < 0) {
+    log_line(LOG_DEBUG,"pthread_create failed");
+  }
+  pthread_join(rx_task, NULL);
+  bladerf_deinit_stream(rx_stream);     
   
   log_line(LOG_DEBUG,"do_exit: %d",do_exit);
   bladerf_close(device);
-
-
   return 0;
 }
