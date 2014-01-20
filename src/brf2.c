@@ -36,14 +36,15 @@ static void *rx_stream_callback(struct bladerf *dev,
   int buffercounter = 0;
   int16_t *sample = (int16_t *)samples;
   int ch, ch2;
-  int bufsize = 5500;
+  int bufsize = num_samples/2;
+  int out_block_size = 2048;
+
   bitbuffer = malloc(bufsize * sizeof(int16_t));
   memset(bitbuffer,0,bufsize);
-  
   buffercounter = 0;
   bitcounter = 0;
   
-  for(i=0; i<num_samples*2; i++) {
+  for(i=0; i<num_samples * 2; i++) {
     for (j=0; j < 10; j+= 2) {
       ch = (*sample >> j) & 0x01;
       ch2 = (*sample >> (j+1)) & 0x01;
@@ -61,17 +62,21 @@ static void *rx_stream_callback(struct bladerf *dev,
 	bitcounter = 0;
       }
 
+      
+      if (buffercounter % out_block_size == 0) {
+	fwrite(&bitbuffer[buffercounter - out_block_size], 
+	       sizeof(int16_t), 
+	       out_block_size,
+	       stdout);
+      } 
+      
       /* Not threaadsafe!
        * if you set bufsize too high, the next callback might 
        * happen before you get here to write anything to output! 
        * time for locking, and discarding packets!
-      */
-      
+       */
+	
       if (buffercounter >= bufsize) {
-	fwrite(bitbuffer, 
-	       sizeof(int16_t), 
-	       buffercounter,
-	       stdout);
 	buffercounter = 0;
 	bitcounter = 0;
 	memset(bitbuffer,0,bufsize);
@@ -79,9 +84,14 @@ static void *rx_stream_callback(struct bladerf *dev,
     }
     sample ++;
   }
-  
-  free(bitbuffer);
 
+  /* Works well printing here at buffer size ~40MB/s  
+  /* fwrite(bitbuffer, */
+  /* 	 sizeof(int16_t), */
+  /* 	 buffercounter, */
+  /* 	 stdout); */
+
+  free(bitbuffer);
   if (!do_exit) {
     return samples;
   } else {
@@ -151,12 +161,14 @@ int main(int argc, char * argv) {
   log_line(LOG_DEBUG, "Sample rate set to %d", actual_value);
   
   /* Set the filter bandwidth to the same as the sample rate for now */
-  r = bladerf_set_bandwidth(device, BLADERF_MODULE_RX, samp_rate, &actual_value);
+  /*r = bladerf_set_bandwidth(device, BLADERF_MODULE_RX, samp_rate, &actual_value);
   if (r < 0) {
     log_line(LOG_DEBUG,"Failed to set sample rate: %s", bladerf_strerror(r));
     exit(EXIT_FAILURE);
   }
-  log_line(LOG_DEBUG, "Bandwidth rate set to %d", actual_value);
+  log_line(LOG_DEBUG, "Bandwidth rate set to %d", actual_value); */
+
+  r = bladerf_set_lpf_mode(device, BLADERF_MODULE_RX, BLADERF_LPF_BYPASSED);
   
   log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
   
