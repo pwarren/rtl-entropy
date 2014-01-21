@@ -45,6 +45,7 @@
 #include <sys/prctl.h>
 #endif
 
+#include <pthread.h>
 #include <libbladeRF.h>
 #include "fips.h"
 #include "util.h"
@@ -55,14 +56,19 @@
 static int do_exit = 0;
 static fips_ctx_t fipsctx;
 
+/* bladerf bits */
 uint32_t samp_rate = 40000000;
 int actual_samp_rate = 0;
 uint32_t frequency = 434000000;
+float gain = 1000.0;
+struct bladerf *dev;
+pthread_t rx_task;
+struct bladerf_stream *rx_stream;
+
+/* flags */
 int opt = 0;
 int redirect_output = 0;
 int gflags_encryption = 0;
-int device_count = 0;
-float gain = 1000.0;
 
 /* daemon */
 int uid = -1, gid = -1;
@@ -73,6 +79,7 @@ FILE *output = NULL;
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
 unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
+void *buffer;
 
 /* Counters */
 unsigned int bitcounter = 0;
@@ -208,28 +215,127 @@ void route_output(void) {
   }
 }
 
-int nearest_gain(int target_gain){
-  /* will have to work out what the bladeRF can do.
-     This function may not be needed */
+static void *rx_stream_callback(struct bladerf *dev,
+				struct bladerf_stream *stream,
+				struct bladerf_metadata *meta,
+				void *samples,
+				size_t num_samples,
+				void *user_data)
+{
+  int i ,j;
+  int16_t *sample = (int16_t *)samples;
+  int ch, ch2;
+  int bufsize = num_samples/2;
+  uint8_t *ciphertext;
+  int fips_result;
+  int aes_len;
+  uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
 
-  return target_gain;
+  for(i=0; i<num_samples * 2; i++) {
+    for (j=0; j < 10; j+= 2) {
+      ch = (*sample >> j) & 0x01;
+      ch2 = (*sample >> (j+1)) & 0x01;
+      
+      if (ch != ch2) {
+	if (ch) {
+	  /* store a 1 in our bitbuffer */
+	  bitbuffer[buffercounter] |= 1 << bitcounter;
+	} /* else, leave the buffer alone, it's already 0 at this bit */
+	bitcounter++;
+      } else {
+	if (ch) {
+	  store_hash_data(1);
+	} else {
+	  store_hash_data(0);
+	}
+      }
+      
+      /* is byte full? */
+      if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
+	buffercounter++;
+	bitcounter = 0;
+      }
+      
+      /* is buffer full? */
+      if (buffercounter > BUFFER_SIZE) {
+	/* We have 2500 bytes of entropy 
+	   Can now send it to FIPS! */
+	fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
+	if (!fips_result) {
+	  if (gflags_encryption != 0) {
+	    if (hash_loop) {
+	      /*   /\* Get a key from disacarded bits *\/ */
+	      SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);
+	      /* use key to encrypt output */
+	      /* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
+	      /* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
+	      aes_init(hash_buffer, sizeof(hash_buffer), &en);
+	      aes_len = sizeof(bitbuffer);
+	      ciphertext = aes_encrypt(&en, bitbuffer, &aes_len);
+	      /* yay, send it to the output! */
+	      fwrite(ciphertext,sizeof(ciphertext[0]),aes_len,output);
+	      /* Clean up */
+	      free(ciphertext);
+	      EVP_CIPHER_CTX_cleanup(&en);
+	    }
+	  } else {
+	    /* xor with old data */
+	    for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
+	      bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
+	    }
+	    fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
+	    /* swap old data */
+	    memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
+	  }
+	} else {   /* FIPS test failed */
+	  for (j=0; j< N_FIPS_TESTS; j++) {
+	    if (fips_result & fips_test_mask[j]) {
+	      if (!gflags_detach)
+		log_line(LOG_DEBUG, "Failed: %s", fips_test_names[j]);
+	    }
+	  }
+	}
+	/* reset buffers, and the counter */
+	/* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
+	memset(bitbuffer,0,sizeof(bitbuffer));
+	buffercounter = 0;
+      }
+    }
+    sample ++;
+  }
+
+  if (!do_exit) {
+    return samples;
+  } else {
+    if ( (do_exit == SIGPIPE) && gflags_detach) {
+      log_line(LOG_DEBUG, "Reader went away, closing FIFO");
+      fclose(output);
+      log_line(LOG_DEBUG, "Waiting for a Reader...");
+      output = fopen(DEFAULT_OUT_FILE,"w");
+      /* only quit on sigpipe in daemon mode */
+      return samples;
+    } else {
+      return NULL;
+    }
+  }
 }
+
+void * rx_task_run(void *inputs) {
+  int r;
+  r = bladerf_stream(rx_stream, BLADERF_MODULE_RX);
+  if (r < 0) {
+    log_line(LOG_DEBUG,"RX Stream failure: %s\n",bladerf_strerror(r));
+  }
+  return NULL;
+}
+
+
 
 int main(int argc, char **argv) {
   struct sigaction sigact;
-  struct bladerf *dev;
-  struct bladerf_stream *stream;
-  struct bladerf_metadata metadata;
-  uint8_t *ciphertext;
-  int ch, ch2;
-  int fips_result;
-  int aes_len;
-  unsigned int i, j;
+  int samples_per_buffer = 65536;
   int r;
-  int16_t *buffer;
-  uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
 
-   
   parse_args(argc, argv);
   
   if (gflags_detach) {
@@ -250,7 +356,7 @@ int main(int argc, char **argv) {
 #endif
 
   /* allocate buffers */
-  buffer = malloc(2 * out_block_size * sizeof(int16_t));
+  buffer = malloc(2 * samples_per_buffer * sizeof(int16_t));
 
   /* Setup Signal handlers */
   sigact.sa_handler = sighandler;
@@ -277,7 +383,7 @@ int main(int argc, char **argv) {
   log_line(LOG_DEBUG, "FPGA Loaded");
 
   /* set up verbose logging of libbladerf calls */
-  bladerf_log_set_verbosity(BLADERF_LOG_LEVEL_VERBOSE);
+  /* bladerf_log_set_verbosity(BLADERF_LOG_LEVEL_VERBOSE); */
 
   /* Set the sample rate */
   r = bladerf_set_sample_rate(dev, BLADERF_MODULE_RX, samp_rate, &actual_samp_rate);
@@ -287,16 +393,7 @@ int main(int argc, char **argv) {
   }
   log_line(LOG_DEBUG, "Sample rate set to %d", actual_samp_rate);
 
-  /* Set the filter bandwidth to the same as the sample rate for now */
-  r = bladerf_set_bandwidth(dev, BLADERF_MODULE_RX, samp_rate, &actual_samp_rate);
-  if (r < 0) {
-    log_line(LOG_DEBUG,"Failed to set sample rate: %s", bladerf_strerror(r));
-    exit(EXIT_FAILURE);
-  }
-  log_line(LOG_DEBUG, "Bandwidth rate set to %d", actual_samp_rate);
-
   log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
-
   r = bladerf_set_frequency(dev, BLADERF_MODULE_RX, frequency);
   if (r < 0) {
     log_line(LOG_DEBUG,"Failed to set frequency: %s", bladerf_strerror(r));
@@ -304,7 +401,6 @@ int main(int argc, char **argv) {
   }  
   
   /* Set gain */
-  gain = nearest_gain(gain);
   r = bladerf_set_rxvga1(dev, gain);
   if (r < 0) {
     log_line(LOG_DEBUG,"Failed to set pre gain: %s",bladerf_strerror(r));
@@ -317,24 +413,11 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }  
   
-  /* Initialise the receive stream */
-  /* r = bladerf_init_stream(&stream, */
-  /* 			  dev, */
-  /* 			  &rx_stream_callback, */
-  /* 			  &buffer, */
-  /* 			  1, */
-  /* 			  BLADERF_FORMAT_SC16_Q12, */
-  /* 			  out_block_size, */
-  /* 			  1, */
-  /* 			  NULL); */
-      
-  /* if (r < 0) { */
-  /*   log_line(LOG_DEBUG, "Failed to initialize RX stream: %s\n", */
-  /* 	     bladerf_strerror(r)); */
-  /*   bladerf_close(dev); */
-  /*   exit(EXIT_FAILURE); */
-  /* } */
-
+  r = bladerf_set_lpf_mode(dev, BLADERF_MODULE_RX, BLADERF_LPF_BYPASSED);
+  if (r < 0) {
+    log_line(LOG_DEBUG, "Failed to  set filter bypass mode: %s", 
+	     bladerf_strerror(r));
+  }
   
   r = bladerf_enable_module(dev, BLADERF_MODULE_RX, true);
   if (r < 0) {
@@ -344,114 +427,40 @@ int main(int argc, char **argv) {
   } else {
     log_line(LOG_DEBUG,"Enabled RX module");
   }
-
+ 
+  /*  Initialise the receive stream */
+  r = bladerf_init_stream(&rx_stream,
+			  dev,
+			  rx_stream_callback,
+			  buffer,
+			  1,
+			  BLADERF_FORMAT_SC16_Q12,
+			  samples_per_buffer,
+			  1,
+			  NULL);
+  
   
   log_line(LOG_DEBUG, "Doing FIPS init");
   fips_init(&fipsctx, (int)0);
   
   log_line(LOG_DEBUG, "Reading samples!");
 
-
-  while ( (!do_exit) || (do_exit == SIGPIPE)) {
-    if (do_exit == SIGPIPE) {
-      log_line(LOG_DEBUG, "Reader went away, closing FIFO");
-      fclose(output);
-      if (gflags_detach) {
-	log_line(LOG_DEBUG, "Waiting for a Reader...");
-	output = fopen(DEFAULT_OUT_FILE,"w");
-      }
-      else {
-	break;
-      }
-    }
-    
-    r = bladerf_rx(dev, BLADERF_FORMAT_SC16_Q12, buffer, out_block_size, &metadata);
-    
-    if (r < 0) {
-      log_line(LOG_DEBUG,"Failed to read samples: %s", bladerf_strerror(r));
-      do_exit = r;
-      break;
-    }  
-    log_line(LOG_DEBUG, "%d Samples read of %d!",r,out_block_size);
-    for (i=0; i < r; i++) {
-      for (j=0; j < 10; j+= 2) {
-	ch = (buffer[i] >> j) & 0x01;
-	ch2 = (buffer[i] >> (j+1)) & 0x01;
-	if (ch != ch2) {
-	  if (ch) {
-	    /* store a 1 in our bitbuffer */
-	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	  } /* else, leave the buffer alone, it's already 0 at this bit */
-	  bitcounter++;
-	} else {
-	  if (ch) {
-	    store_hash_data(1);
-	  } else {
-	    store_hash_data(0);
-	  }
-	}
-	
-	/* is byte full? */
-	if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
-	  buffercounter++;
-	  bitcounter = 0;
-	}
-	
-	/* is buffer full? */
-	if (buffercounter > BUFFER_SIZE) {
-	  /* We have 2500 bytes of entropy 
-	     Can now send it to FIPS! */
-	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
-	  if (!fips_result) {
-	    if (gflags_encryption != 0) {
-	      if (hash_loop) {
-		/*   /\* Get a key from disacarded bits *\/ */
-		SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);
-		/* use key to encrypt output */
-		/* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
-		/* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
-		aes_init(hash_buffer, sizeof(hash_buffer), &en);
-		aes_len = sizeof(bitbuffer);
-		ciphertext = aes_encrypt(&en, bitbuffer, &aes_len);
-		/* yay, send it to the output! */
-		fwrite(ciphertext,sizeof(ciphertext[0]),aes_len,output);
-		/* Clean up */
-		free(ciphertext);
-		EVP_CIPHER_CTX_cleanup(&en);
-	      }
-	    } else {
-	      /* xor with old data */
-	      for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
-		bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
-	      }
-	      fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
-	      /* swap old data */
-	      memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
-	    }
-	  } else {   /* FIPS test failed */
-	    for (j=0; j< N_FIPS_TESTS; j++) {
-	      if (fips_result & fips_test_mask[j]) {
-		if (!gflags_detach)
-		  log_line(LOG_DEBUG, "Failed: %s", fips_test_names[j]);
-	      }
-	    }
-	  }
-	  /* reset buffers, and the counter */
-	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
-	  memset(bitbuffer,0,sizeof(bitbuffer));
-	  buffercounter = 0;
-	}
-      }
-    }
-    /* do stuff forever here! */ 
-  
+  r = pthread_create(&rx_task, NULL, rx_task_run, NULL);
+  if (r < 0) {
+    log_line(LOG_DEBUG,"pthread_create() failed");
+    bladerf_close(dev);
+    bladerf_deinit_stream(rx_stream);
+    exit(EXIT_FAILURE);
   }
+  
+  pthread_join(rx_task, NULL);
+  bladerf_deinit_stream(rx_stream);
+
   if (do_exit > 0) {
     log_line(LOG_DEBUG, "\nUser cancel, exiting...");
   }  else {
     log_line(LOG_DEBUG, "\nLibrary error %d, exiting...", r);
   }
-
 
   bladerf_close(dev);
   free(buffer);
