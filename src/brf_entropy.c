@@ -312,7 +312,9 @@ static void *rx_stream_callback(struct bladerf *dev,
       fclose(output);
       log_line(LOG_DEBUG, "Waiting for a Reader...");
       output = fopen(DEFAULT_OUT_FILE,"w");
-      /* only quit on sigpipe in daemon mode */
+      if (output == NULL) {
+	return NULL;
+      }
       return samples;
     } else {
       return NULL;
@@ -345,11 +347,6 @@ int main(int argc, char **argv) {
   }
   log_line(LOG_INFO,"Options parsed, continuing.");
   
-  if (gflags_detach)
-    route_output();
-  
-  if (!redirect_output)
-    output = stdout;
 #ifndef __APPLE__  
   if (uid != -1 && gid != -1)
     drop_privs(uid, gid);
@@ -442,7 +439,12 @@ int main(int argc, char **argv) {
   
   log_line(LOG_DEBUG, "Doing FIPS init");
   fips_init(&fipsctx, (int)0);
-  
+
+  if (gflags_detach)
+    route_output();
+  if (!redirect_output)
+    output = stdout;
+    
   log_line(LOG_DEBUG, "Reading samples!");
 
   r = pthread_create(&rx_task, NULL, rx_task_run, NULL);
@@ -452,7 +454,7 @@ int main(int argc, char **argv) {
     bladerf_deinit_stream(rx_stream);
     exit(EXIT_FAILURE);
   }
-  
+
   pthread_join(rx_task, NULL);
   bladerf_deinit_stream(rx_stream);
 
