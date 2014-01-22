@@ -55,6 +55,7 @@
 /*  Globals. */
 static int do_exit = 0;
 static fips_ctx_t fipsctx;
+int output_ready;
 
 /* bladerf bits */
 uint32_t samp_rate = 40000000;
@@ -283,7 +284,9 @@ static void *rx_stream_callback(struct bladerf *dev,
 	    for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
 	      bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
 	    }
+	    if (output_ready > 2) {
 	    fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
+	    }
 	    /* swap old data */
 	    memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	  }
@@ -303,7 +306,10 @@ static void *rx_stream_callback(struct bladerf *dev,
     }
     sample ++;
   }
+  output_ready++;
+  
 
+  
   if (!do_exit) {
     return samples;
   } else {
@@ -446,7 +452,7 @@ int main(int argc, char **argv) {
     output = stdout;
     
   log_line(LOG_DEBUG, "Reading samples!");
-
+  output_ready = 0;
   r = pthread_create(&rx_task, NULL, rx_task_run, NULL);
   if (r < 0) {
     log_line(LOG_DEBUG,"pthread_create() failed");

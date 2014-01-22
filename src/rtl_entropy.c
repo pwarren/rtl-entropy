@@ -247,7 +247,8 @@ int main(int argc, char **argv) {
   int ch, ch2;
   int fips_result;
   int aes_len;
-  
+  int output_ready;
+
   parse_args(argc, argv);
   
   if (gflags_detach) {
@@ -336,7 +337,7 @@ int main(int argc, char **argv) {
     }
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
     if (r < 0) {
-      log_line(LOG_DEBUG, "ERROR: sync read failed.");
+      log_line(LOG_DEBUG, "ERROR: sync read failed: %d", r);
       break;
     }
     if ((uint32_t)n_read < out_block_size) {
@@ -356,8 +357,9 @@ int main(int argc, char **argv) {
        
     */
 
-    /* debias(buffer, bitbuffer, n_read, sizeof(buffer[0])); */
+    output_ready = 0;
 
+    /* debias(buffer, bitbuffer, n_read, sizeof(buffer[0])); */
     for (i=0; i < n_read * sizeof(buffer[0]); i++) {
       for (j=0; j < 6; j+= 2) {
 	ch = (buffer[i] >> j) & 0x01;
@@ -409,7 +411,9 @@ int main(int argc, char **argv) {
 	      for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
 		bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
 	      }
-	      fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
+	      if (output_ready) {
+		fwrite(&bitbuffer_old,sizeof(bitbuffer_old[0]),BUFFER_SIZE,output);
+	      }
 	      /* swap old data */
 	      memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	    }
@@ -425,6 +429,7 @@ int main(int argc, char **argv) {
 	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;
+	  output_ready = 1;
 	}
       }
     }
