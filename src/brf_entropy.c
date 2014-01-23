@@ -55,12 +55,11 @@
 /*  Globals. */
 static int do_exit = 0;
 static fips_ctx_t fipsctx;
-int output_ready;
 
 /* bladerf bits */
 uint32_t samp_rate = 40000000;
 int actual_samp_rate = 0;
-uint32_t frequency = 434000000;
+long frequency = 434000000;
 float gain = 1000.0;
 struct bladerf *dev;
 pthread_t rx_task;
@@ -70,6 +69,7 @@ struct bladerf_stream *rx_stream;
 int opt = 0;
 int redirect_output = 0;
 int gflags_encryption = 0;
+int output_ready;
 
 /* daemon */
 int uid = -1, gid = -1;
@@ -231,12 +231,11 @@ static void *rx_stream_callback(struct bladerf *dev,
   int fips_result;
   int aes_len;
   uint32_t out_block_size = MAXIMAL_BUF_LENGTH;
-
+  
   for(i=0; i<num_samples * 2; i++) {
     for (j=0; j < 10; j+= 2) {
       ch = (*sample >> j) & 0x01;
       ch2 = (*sample >> (j+1)) & 0x01;
-      
       if (ch != ch2) {
 	if (ch) {
 	  /* store a 1 in our bitbuffer */
