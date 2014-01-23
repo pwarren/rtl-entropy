@@ -80,7 +80,7 @@ FILE *output = NULL;
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
 unsigned char bitbuffer_old[BUFFER_SIZE] = {0};
-void *buffer;
+void **buffers;
 
 /* Counters */
 unsigned int bitcounter = 0;
@@ -358,9 +358,6 @@ int main(int argc, char **argv) {
     drop_privs(uid, gid);
 #endif
 
-  /* allocate buffers */
-  buffer = malloc(2 * samples_per_buffer * sizeof(int16_t));
-
   /* Setup Signal handlers */
   sigact.sa_handler = sighandler;
   sigemptyset(&sigact.sa_mask);
@@ -371,7 +368,11 @@ int main(int argc, char **argv) {
   sigaction(SIGPIPE, &sigact, NULL);
   
   /* Open device */
-  bladerf_open(&dev, NULL);
+  r = bladerf_open(&dev, NULL);
+  if (r < 0) {
+    log_line(LOG_DEBUG,"Failed to open device: %s", bladerf_strerror(r));
+    suicide("");
+  }
   
   /* Is FPGA ready? */
   r = bladerf_is_fpga_configured(dev);
@@ -435,11 +436,11 @@ int main(int argc, char **argv) {
   r = bladerf_init_stream(&rx_stream,
 			  dev,
 			  rx_stream_callback,
-			  buffer,
-			  1,
+			  &buffers,
+			  32,
 			  BLADERF_FORMAT_SC16_Q12,
 			  samples_per_buffer,
-			  1,
+			  32,
 			  NULL);
   
   
@@ -471,7 +472,6 @@ int main(int argc, char **argv) {
   }
 
   bladerf_close(dev);
-  free(buffer);
   fclose(output);
   return 0;
 }
