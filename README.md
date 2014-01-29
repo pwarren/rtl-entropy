@@ -12,7 +12,8 @@ This software has been tested on debian linux 7.1, but should work on any linux 
 Links
 -----
 [lists](http://lists.rtl-entropy.org/)
-[code](https://github.com/pwarren/rtl-entropy
+
+[code](https://github.com/pwarren/rtl-entropy)
 
 Dependencies
 ------------
