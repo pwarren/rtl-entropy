@@ -385,7 +385,7 @@ int main(int argc, char **argv) {
 	}
 	
 	/* is buffer full? */
-	if (buffercounter > BUFFER_SIZE) {
+	if (buffercounter >= BUFFER_SIZE) {
 	  /* We have 2500 bytes of entropy 
 	     Can now send it to FIPS! */
 	  fips_result = fips_run_rng_test(&fipsctx, &bitbuffer);
