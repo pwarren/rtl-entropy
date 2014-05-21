@@ -19,7 +19,7 @@ Dependencies
 ------------
 
 * [rtl-sdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
-* libcap - 'apt-get isntall libcap-dev' or equivalent on your platform.
+* libcap - 'apt-get install libcap-dev' or equivalent on your platform.
 * openssl
 * pkg-config
 
