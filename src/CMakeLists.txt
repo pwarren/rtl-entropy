@@ -10,7 +10,7 @@ endif(LIBRTLSDR_FOUND)
 
 if(LIBBLADERF_FOUND)
   add_executable(brf_entropy brf_entropy.c)
-  target_link_libraries(brf_entropy rtlentropylib ${OPENSSL_LIBRARIES} ${LibCAP_LIBRARY} ${LIBBLADERF_LIBRARIES})
+  target_link_libraries(brf_entropy rtlentropylib ${OPENSSL_LIBRARIES} ${LibCAP_LIBRARY} ${LIBBLADERF_LIBRARIES} pthread)
   set(INSTALL_TARGETS brf_entropy)
 endif(LIBBLADERF_FOUND)
 
