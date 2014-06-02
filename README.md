@@ -1,7 +1,7 @@
 rtl-entropy
 ===========
 
-rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing runs it throught the FIPS 140-2 tests, then optionally (-e) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
+rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing, runs it through the FIPS 140-2 tests, then optionally (-e) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
 
 If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio. 
 
@@ -86,7 +86,7 @@ rtl_entropy -b
 
 rngd -r /var/run/rtl_entropy.fifo -W95%
 
-The daemon mode by default uses /var/run/rtl_entropy.fifo for output and /var/run/rtl_entropy.pid for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximise performance.
+The daemon mode by default uses /var/run/rtl_entropy.fifo for output and /var/run/rtl_entropy.pid for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximize performance.
 
 If you specify an output file with -o, rtl_entropy will open not attempt to create a FIFO, but will just open the file for writing.
 
@@ -113,7 +113,7 @@ Done!
 
 Credits
 -------
-Development supported by Star2Star commnications.
+Development supported by Star2Star communications.
 
 rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
 Contributions from projectgus: https://github.com/projectgus
@@ -134,7 +134,7 @@ Cryptography Discussion
 
 As I mentioned above, capturing atmospheric radio is not terribly secure, if someone can transmit over the bandwidth you're listening on they could potentially influence the entropy your getting, and be able then to guess at your private keys!
 
-To combat this, there's n option (-e) to do Kaminsky debiasing, which will dramatically alter the output if the input differs slightly. What this debiasing step does is take the bits rejected from the von neumann filter and create a SHA512 hash from those bits, then encrypt the entropy from the von nuemann filter using the hash as the key.
+To combat this, there's n option (-e) to do Kaminsky debiasing, which will dramatically alter the output if the input differs slightly. What this debiasing step does is take the bits rejected from the von neumann filter and create a SHA512 hash from those bits, then encrypt the entropy from the von Neumann filter using the hash as the key.
 
 This makes the output much harder for an attacker to guess, entropy output will differ unpredictably for the attacker as they have to know the quantisation limits of your ADC to know which bits will be used where!
 
