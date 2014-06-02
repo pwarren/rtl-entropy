@@ -41,6 +41,10 @@ if(NOT EXEC_INSTALL_DIR)
   set(EXEC_INSTALL_DIR bin)
 endif()
 
+if(NOT LIB_INSTALL_DIR)
+   set(LIB_INSTALL_DIR lib)
+endif()
+
 # Set the version information here
 set(VERSION_INFO_MAJOR_VERSION 0)
 set(VERSION_INFO_MINOR_VERSION 1)
@@ -73,6 +77,7 @@ IF(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_COMPILER_IS_CLANGXX)
 ########################################################################
 # Find build dependencies
 ########################################################################
+find_package(PkgConfig)
 find_package(LibRTLSDR)
 find_package(LibbladeRF)
 find_package(OpenSSL)
@@ -113,7 +118,7 @@ add_custom_target(uninstall
 ########################################################################
 set(prefix ${CMAKE_INSTALL_PREFIX})
 set(exec_prefix \${prefix}/bin)
-set(libdir \${prefix}/lib)
+set(libdir \${exec_prefix}/${LIB_INSTALL_DIR})
 set(includedir \${prefix}/include)
 
 CONFIGURE_FILE(
@@ -125,7 +130,7 @@ CONFIGURE_FILE(
 
 INSTALL(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/rtl-entropy.pc
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/pkgconfig
+    DESTINATION ${LIB_INSTALL_DIR}/pkgconfig
 )
 
 ########################################################################
