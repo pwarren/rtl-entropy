@@ -406,7 +406,7 @@ int main(int argc, char **argv) {
 		free(ciphertext);
 		EVP_CIPHER_CTX_cleanup(&en);
 	      }
-	    } else {
+	    } else { 
 	      /* xor with old data */
 	      for (buffercounter = 0; buffercounter < BUFFER_SIZE; buffercounter++) {
 		bitbuffer[buffercounter] = bitbuffer[buffercounter] ^ bitbuffer_old[buffercounter];
@@ -417,6 +417,8 @@ int main(int argc, char **argv) {
 	      /* swap old data */
 	      memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	    }
+	    /* We're ready to write once we've been through the above once */
+	    output_ready = 1;
 	  } else {   /* FIPS test failed */
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
@@ -429,7 +431,6 @@ int main(int argc, char **argv) {
 	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;
-	  output_ready = 1;
 	}
       }
     }

@@ -289,6 +289,7 @@ static void *rx_stream_callback(struct bladerf *dev,
 	    /* swap old data */
 	    memcpy(bitbuffer_old,bitbuffer,BUFFER_SIZE);
 	  }
+	  output_ready++;
 	} else {   /* FIPS test failed */
 	  for (j=0; j< N_FIPS_TESTS; j++) {
 	    if (fips_result & fips_test_mask[j]) {
@@ -305,7 +306,7 @@ static void *rx_stream_callback(struct bladerf *dev,
     }
     sample ++;
   }
-  output_ready++;
+
   
 
   
