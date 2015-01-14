@@ -24,6 +24,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
+
+
+/*
+
+Here I will document what this file does!
+
+ */
+
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
