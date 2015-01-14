@@ -32,3 +32,5 @@ so the steps!
 
 * whitener receives a block, does its transform, and when it's accumulated a blocks worth of bytes, passes that to the next whitener or the output.
 
+* Fips receives block, does its tests, on pass, outputs, on fail, drops block.
+
