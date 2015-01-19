@@ -29,7 +29,13 @@
 
 /*
 
-Here I will document what this file does!
+In this file, parse the CLI options, and setup the data path as specified.
+
+In more detail
+* parse command line
+* set up input threads
+* set up processing threads and pipes from input threads
+* set up output and pipes from final processing thread
 
  */
 
