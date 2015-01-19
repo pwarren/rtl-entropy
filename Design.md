@@ -35,3 +35,6 @@ so the steps!
 * Output block writes the block to the specified output, stdout, file, FIFO, whatever.
 
 
+
+
+I might do some statistical analysis of the data output by rtl-sdr and see what sort of biasing might be needed.
