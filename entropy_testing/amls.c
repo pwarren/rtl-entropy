@@ -1,15 +1,16 @@
 /*
- * Von Neumann whitener, 
- * If specified, reads from given file, else reads from  stdin data.
+ * amls.c
+ * Reads from  stdin data.
  * Outputs whitened data to file or stdout.
  *
  * Copyright (C) 2013 by Paul Warren <pwarren@pwarren.id.au>
 
- * Parts taken from:
- *  - rtl_test. Copyright (C) 2012 by Steve Markgraf <steve@steve-m.de>
- *  - http://openfortress.org/cryptodoc/random/noise-filter.c
- *      by Rick van Rein <rick@openfortress.nl>
- *  - snd-egd Copyright (C) 2008-2010 Nicholas J. Kain <nicholas aatt kain.us>
+
+ * Adapted from amls.c as on
+ * http://www.ciphergoth.org/software/unbiasing
+ *
+ * Paul Crowley <paul@ciphergoth.org>, corners@sbcglobal.net
+ * December 2001
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,43 +41,47 @@ unsigned int bitcounter = 0;
 unsigned int buffercounter = 0;
 unsigned int n_read = 0;
 
-int main(int argc, char **argv) {
-  unsigned int i, j;
-  int ch, ch2;
+struct bitpointer {
+  unsigned int *byte;
+  unsigned int offset;
+};
 
+void amls_round(int *input_start, int * input_end, int **output ) {
+  
+  int *low = input_start;
+  int *high = input_end -1;
+  int *doubles = input_start;
+
+  if (high <= low)
+    return;
+  do {
+    //if (value at low == value at high) {
+    //  set value at doubles to value at low
+    //  increment doubles location
+    //  set bit at high to 0
+    // } else {
+    // set value at value of output to value at low
+    // increment value at output
+    // }
+    // increment low
+    // decrement high
+
+  } while (high > low);
+  //recurse it!
+  amls_round(input_start, doubles, output);
+  amls_round(high + 1, input_end, output);
+}
+  
+int main(int argc, char **argv) {
+
+  int *output;
+  
   n_read = fread(&buffer, sizeof(buffer[0]), BUFFER_SIZE, stdin);
   while ( n_read > 0) {      
-    /* debias(buffer, bitbuffer, n_read, sizeof(buffer[0])); */
-    for (i=0; i < n_read * sizeof(buffer[0]); i++) {
-      for (j=0; j < 6; j+= 2) {
-	ch = (buffer[i] >> j) & 0x01;
-	ch2 = (buffer[i] >> (j+1)) & 0x01;
-	if (ch != ch2) {
-	  if (ch) {
-	    /* store a 1 in our bitbuffer */
-	    bitbuffer[buffercounter] |= 1 << bitcounter;
-	  } /* else leave it alone, we have a 0 alread */
-	  bitcounter++;
-	}
-      }
-      
-      /* is byte full? */
-      if (bitcounter >= sizeof(bitbuffer[0]) * 8) {
-	buffercounter++;
-	bitcounter = 0;
-      }
-
-      //fprintf(stderr,"bitcounter: %d \t buffercounter: %d\n",bitcounter,buffercounter);
-      
-      /* is buffer full? */
-      if (buffercounter >= BUFFER_SIZE) {
-	/* We have 2500 bytes of entropy 
-	   Can now write it out! */
-	fwrite(&bitbuffer,sizeof(bitbuffer[0]),BUFFER_SIZE,stdout);
-	memset(bitbuffer,0,sizeof(bitbuffer));
-	buffercounter = 0;
-      }
-    }
+    // do amls on the read bits.
+    amls_round(&buffer, &buffer + nread, &output);
+    fwrite(&output,sizeof(bitbuffer[0]),wherever amls got to, stdout);
+    
     n_read = fread(&buffer, sizeof(buffer[0]), BUFFER_SIZE, stdin);
   }
   

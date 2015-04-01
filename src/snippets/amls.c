@@ -66,47 +66,46 @@ void amls_round(
 #define ITERATIONS (100)       /* Number of iterations in the test */
 
 int main(
-    int argc,
-    char* argv[]
-) 
+	 int argc,
+	 char* argv[]
+	 ) 
 {
-    char test_input[INPUT_SIZE +1];
-    char test_output[INPUT_SIZE +1];
-    char *output;
-    int bias;
-    int i, j;
-    int total_out;
-
-    if (argc != 2 || (bias = atoi(argv[1])) <= 0 || bias >= 100) {
-        fprintf(stderr, "Usage: %s bias-percentage < /dev/urandom\n", argv[0]);
-        exit(-1);
+  char test_input[INPUT_SIZE +1];
+  char test_output[INPUT_SIZE +1];
+  char *output;
+  int bias;
+  int i, j;
+  int total_out;
+  
+  if (argc != 2 || (bias = atoi(argv[1])) <= 0 || bias >= 100) {
+    fprintf(stderr, "Usage: %s bias-percentage < /dev/urandom\n", argv[0]);
+    exit(-1);
+  }
+  printf("Bias: %d / 100\n", bias);
+  printf("Input bits: %d \n", INPUT_SIZE);
+  for (j = 0 ; j < ITERATIONS ; j++) {
+    /* Read random bytes from stdin.  Run this program as
+       amls 90 < /dev/urandom */
+    for (i = 0; i < INPUT_SIZE; ) {
+      int c = getchar();            
+      /* Should handle EOF here... */
+      if (c < 200) {
+	test_input[i++] =
+	  (c < (bias * 2)) ? '1' : '0';
+      }
     }
-    printf("Bias: %d / 100\n", bias);
-    printf("Input bits: %d \n", INPUT_SIZE);
-    for (j = 0 ; j < ITERATIONS ; j++) {
-            /* Read random bytes from stdin.  Run this program as
-               amls 90 < /dev/urandom */
-        for (i = 0; i < INPUT_SIZE; ) {
-            int c = getchar();            
-                /* Should handle EOF here... */
-            if (c < 200) {
-                test_input[i++] =
-                    (c < (bias * 2)) ? '1' : '0';
-            }
-        }
-        output = test_output;
-        amls_round(test_input, test_input + INPUT_SIZE, &output);
-        printf("Output size: %d\n", output - test_output);
-        total_out += output - test_output;
-    }
+    output = test_output;
+    amls_round(test_input, test_input + INPUT_SIZE, &output);
+    printf("Output size: %d\n", output - test_output);
+    total_out += output - test_output;
+  }
 #if 0
-    test_input[INPUT_SIZE] = '\0';
-    *output = '\0';
-    printf("Input: %s\n", test_input);
-    printf("Output: %s\n", test_output);
+  test_input[INPUT_SIZE] = '\0';
+  *output = '\0';
+  printf("Input: %s\n", test_input);
+  printf("Output: %s\n", test_output);
 #endif
-    printf("Total inputs: %d\n", INPUT_SIZE * j);
-    printf("Total output: %d\n", total_out);
-    return 0;
+  printf("Total inputs: %d\n", INPUT_SIZE * j);
+  printf("Total output: %d\n", total_out);
+  return 0;
 }
-
