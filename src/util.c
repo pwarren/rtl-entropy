@@ -86,7 +86,7 @@ void write_pidfile(void)
   fclose(fh);
 }
 
-#ifndef __APPLE__
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
 void daemonize(void)
 {
   if (daemon(0, 0) == -1)
