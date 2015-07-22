@@ -1,5 +1,5 @@
 /*
- * rtl-entropy, turns your Realtek RTL2832 based DVB dongle into a
+ * rtl_entropy, turns your Realtek RTL2832 based DVB dongle into a
  * high quality entropy source.
  *
  * Copyright (C) 2013 by Paul Warren <pwarren@pwarren.id.au>
@@ -25,6 +25,7 @@
  */
 
 #include <errno.h>
+#include <getopt.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,9 +61,12 @@ static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 uint32_t dev_index = 0;
 uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 uint32_t frequency = DEFAULT_FREQUENCY;
+#define DEFAULT_CONFIGURATION_FILE        "/etc/sysconfig/rtl_entropy"
+#define PID_FILE                          "/var/run/rtl_entropy.pid"
 int opt = 0;
 int redirect_output = 0;
 int gflags_encryption = 0;
+int gflags_quiet = 0;
 int device_count = 0;
 float gain = 1000.0;
 
@@ -84,91 +88,230 @@ unsigned int buffercounter = 0;
 AES_KEY wctx;
 EVP_CIPHER_CTX en;
 
+int read_config_file (FILE * infile, char ***config_options);
+void * Alloc (size_t len);
+char * StrnDup (char *str);
+char * StrMem (size_t slen);
 
-void usage(void) {
-  fprintf(stderr,
-	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
-	  "Usage: rtl_entropy [options]\n"
-	  "\t-a Set gain (default: max for dongle)\n"
-	  "\t-d Device index (default: 0)\n"
-	  "\t-e Encrypt output\n"
-	  "\t-f Set frequency to listen (default: 70MHz )\n"
-	  "\t-s Samplerate (default: 3200000 Hz)\n");
-  fprintf(stderr,
-	  "\t-o Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
+void usage(void)
+{ fprintf(stderr, "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n");
+  fprintf(stderr, "Usage: rtl_entropy [options]\n");
+  fprintf(stderr, "--amplify,       -a []  Set gain (default: max for dongle)\n");
 #ifndef __APPLE__
-	  "\t-p PID file (default: /var/run/rtl_entropy.pid)\n"
-	  "\t-b Daemonize\n"
-	  "\t-u User to run as (default: rtl_entropy)\n"
-	  "\t-g Group to run as (default: rtl_entropy)\n"
+  fprintf(stderr, "--daemonize,     -b     Daemonize\n");
 #endif
-	  );
+  fprintf(stderr, "--device_idx,    -d []  Device index (default: %i)\n", dev_index);
+  fprintf(stderr, "--encrpyt,       -e     Encrypt output\n");
+  fprintf(stderr, "--frequency,     -f []  Set frequency to listen (default: %i MHz)\n", frequency);
+#ifndef __APPLE__
+  fprintf(stderr, "--group,         -g []  Group to run as (default: rtl_entropy)\n");
+#endif
+  fprintf(stderr, "--help,          -h     This help. (Default no)\n");
+  fprintf(stderr, "--output_file,   -o []  Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n");
+#ifndef __APPLE__
+  fprintf(stderr, "--pid_file,      -p []  PID file (default: /var/run/rtl_entropy.pid)\n");
+#endif
+  fprintf(stderr, "--quiet,         -q []  quiet level, how much output to print, 0-3 (default: %i, print all)\n", gflags_quiet);
+  fprintf(stderr, "--sample_rate,   -s []  Samplerate (default: %i Hz)\n", samp_rate);
+#ifndef __APPLE__
+  fprintf(stderr, "--user,          -u []  User to run as (default: rtl_entropy)\n");
+#endif
+  fprintf(stderr, "Configuration file at /etc/sysconfig/rtl_entropy has more detail and sample values.\n");
+  fprintf(stderr, "\n");
   exit(EXIT_SUCCESS);
 }
 
 
-void parse_args(int argc, char ** argv) {
-  char *arg_string= "a:d:ef:g:o:p:s:u:hb";
+void parse_args(int argc, char ** argv)
+{ int opt;
+  static struct option long_options[] =
+  { {"amplify",  1, NULL, 'a' },
+    {"daemonize",  0, NULL, 'b' },
+    {"device_idx",  1, NULL, 'd' },
+    {"encrypt",  0, NULL, 'e' },
+    {"frequency", 1, NULL, 'f' },
+    {"group", 1, NULL, 'g' },
+    {"help",  0, NULL, 'h' },
+    {"output_file",  1, NULL, 'o' },
+    {"pid_file",  1, NULL, 'p' },
+    {"quiet",  1, NULL, 'q' },
+    {"sample_rate",  1, NULL, 's' },
+    {"user",  1, NULL, 'u' },
+    {NULL,    0, NULL, 0   }
+  };
+
+  char *arg_string= "a:bd:ef:g:ho:p:q:s:u:";
     
-  opt = getopt(argc, argv, arg_string);
-  while (opt != -1) {
-    switch (opt) {
-    case 'a':
-      gain = (int)(atof(optarg) * 10);
+  while(1)
+  { opt = getopt_long (argc, argv, arg_string, long_options, NULL);
+    if (opt == -1)
       break;
+    switch (opt)
+    { case 'a':
+        gain = (int)(atof(optarg) * 10);
+        break;
 
-    case 'b':
-      gflags_detach = 1;
-      break;
-      
-    case 'd':
-      dev_index = atoi(optarg);
-      break;
+      case 'b':
+        gflags_detach = 1;
+        break;
+        
+      case 'd':
+        dev_index = atoi(optarg);
+        break;
 
-    case 'e':
-      gflags_encryption = 1;
-      break;
-      
-    case 'f':
-      frequency = (uint32_t)atofs(optarg);
-      break;
-      
-    case 'g':
-      gid = parse_group(optarg);
-      break;
-      
-    case 'h':
-      usage();
-      break;
-      
-    case 'o':
-      redirect_output = 1;
-      output = fopen(optarg,"w");
-      if (output == NULL) {
-	suicide("Couldn't open output file");
-      }
-      fclose(stdout);
-      break;
-      
-    case 'p':
-      pidfile_path = strdup(optarg);
-      break;
-      
-    case 's':
-      samp_rate = (uint32_t)atofs(optarg);
-      break;
-      
-    case 'u':
-      uid = parse_user(optarg, &gid);
-      break;
-      
-    default:
-      usage();
-      break;
+      case 'e':
+        gflags_encryption = 1;
+        break;
+        
+      case 'f':
+        frequency = (uint32_t)atofs(optarg);
+        break;
+        
+      case 'g':
+        gid = parse_group(optarg);
+        break;
+        
+      case 'h':
+        usage();
+        break;
+        
+      case 'o':
+        redirect_output = 1;
+        output = fopen(optarg,"w");
+        if (output == NULL)
+        { suicide("Couldn't open output file");
+        }
+        fclose(stdout);
+        break;
+        
+      case 'p':
+        pidfile_path = strdup(optarg);
+        break;
+        
+      case 'q':
+        gflags_quiet = atoi(optarg);
+        break;
+        
+      case 's':
+        samp_rate = (uint32_t)atofs(optarg);
+        break;
+        
+      case 'u':
+        uid = parse_user(optarg, &gid);
+        break;
+        
+      case '?':
+      default:
+        fprintf(stderr, "Invalid commandline options.\n\n");
+        usage();
+        exit(1);
+        break;
     }
-    opt = getopt(argc, argv, arg_string);
   }
 }
+
+/*
+   Read a configuration file, discarding blank
+   lines and comments.  Rets: option count on success.
+   Everything from the file is put into an argv like array.
+*/
+
+int
+read_config_file (FILE * infile, char ***config_options)
+{
+  char *curr_option, *retptr, *workline, *cmnt, *token;
+  char **all_options;
+  int iii, line_count = 0, configuration_count = 0;
+
+  workline= StrMem (256);
+  curr_option = StrnDup ("rtl_entropy");  // save the program name to simulate argv
+  all_options = (char **) StrMem ((sizeof (char *)) * (configuration_count+1));  // allocate an array for option char pointers, including the new option
+  configuration_count++;  // update the option count
+  *(all_options + configuration_count - 1) = curr_option;  // append the new option pointer
+  *config_options = all_options;  // point to the new option pointer array
+  retptr = fgets (workline, 256, infile);
+  if (retptr == NULL)
+    suicide ("Unable to read line from configuration file");
+  while (*workline != '\0')
+  { line_count++;
+    token = strtok (workline, " \t\n");    // get first token separated by spaces, tabs, or newline
+    if (token)                  // not an empty line
+    { cmnt = strchr (workline, '#');
+      if (token[0] == '-')      // options line
+      { if (cmnt)
+          strncpy (cmnt, "\0", 1);     // truncate at comment
+        curr_option = StrnDup (workline);  // duplicate the option
+        all_options = (char **) StrMem ((sizeof (char *)) * (configuration_count+1));  // allocate an array for option char pointers, including the new option
+        for (iii = 0; iii < configuration_count; iii++)  // transfer existing pointers to the new array of option pointers
+        { *(all_options + iii) = *((*config_options) + iii);
+        }
+        configuration_count++;  // update the option count
+        *(all_options + configuration_count - 1) = curr_option;  // append the new option pointer
+        free (*config_options);  // free the existing option pointer array
+        *config_options = all_options;  // point to the new option pointer array
+      }
+      else if (token[0] == '#') // line is a comment
+        ;  // do nothing
+      else
+      { if (gflags_quiet < 3)
+          log_line(LOG_DEBUG, "Skipped line %d in configuration file with invalid %s at start of line", line_count, token);
+      }
+    }
+    memset (workline, 0x00, 256);
+    retptr = fgets (workline, 256, infile);
+  }
+  curr_option = NULL;  // terminate like argv is terminated, with a null char*.
+  all_options = (char **) StrMem ((sizeof (char *)) * (configuration_count+1));  // allocate an array for option char pointers, including the new option
+  for (iii = 0; iii < configuration_count; iii++)  // transfer existing pointers to the new array of option pointers
+  { *(all_options + iii) = *((*config_options) + iii);
+  }
+  *(all_options + configuration_count) = curr_option;
+  free (*config_options);  // free the existing option pointer array
+  //config_options = &all_options;  // point to the new option pointer array
+  *config_options = all_options;  // point to the new option pointer array
+  if (*workline == '\0')
+  { if (feof (infile))
+    { free (workline);
+      return configuration_count;
+    }
+    free (workline);
+    suicide ("Read error on configuration file");
+  }
+  free (workline);
+  return configuration_count;
+}
+
+void *
+Alloc (size_t len)
+{ void *p = calloc (1, len);
+  if (!p)
+    suicide ("Out of memory in request for %u", len);
+  return p;
+}
+
+char *
+StrnDup (char *str)
+{ size_t len = strlen (str);
+  char *rv = strndup (str, len);
+  if (!rv)
+    suicide ("Out of memory in StrnDup");
+  return rv;
+}
+
+/* Allocate a string of the passed in size from memory.
+ * Strings allocated with this routine can use the StrCat
+ * routine below safely.  Does *not* allocate an extra
+ * position for the NULL terminator.  Callers responsibility. */
+char *
+StrMem (size_t slen)
+{ char *nstr = NULL;
+  nstr = (char *) Alloc (slen);
+  if (!nstr)
+    suicide ("Out of memory in StrMem");
+  return nstr;
+}
+
+
 
 static void sighandler(int signum)
 {
@@ -201,7 +344,8 @@ void route_output(void) {
 	perror("Bad FIFO");
       }
     }
-    log_line(LOG_INFO, "Waiting for a Reader...");
+    if (gflags_quiet < 2)
+      log_line(LOG_INFO, "Waiting for a Reader...");
     output = fopen(DEFAULT_OUT_FILE,"w");
     if (output == NULL) {
       suicide("Couldn't open output file");
@@ -221,13 +365,16 @@ int nearest_gain(int target_gain){
   gains = malloc(sizeof(int) * count);
   count = rtlsdr_get_tuner_gains(dev, gains);
   close_gain = gains[0];
-  log_line(LOG_DEBUG,"Your device is capable of gains at...");
-  for (i=0; i<count; i++) {
-    log_line(LOG_DEBUG," : %0.2f", gains[i]/10.0);
+
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG,"Your device is capable of gains at...");
+  for (i=0; i<count; i++)
+  { if (gflags_quiet < 3)
+      log_line(LOG_DEBUG," : %0.2f", gains[i]/10.0);
     err1 = abs(target_gain - close_gain);
     err2 = abs(target_gain - gains[i]);
-    if (err2 < err1) {
-      close_gain = gains[i];
+    if (err2 < err1) 
+    { close_gain = gains[i];
     }
   }
   free(gains);
@@ -249,14 +396,35 @@ int main(int argc, char **argv) {
   int aes_len;
   int output_ready;
 
-  parse_args(argc, argv);
+  int option_count = 0, iii;
+  FILE *config_file;
+  char **config_file_options;
+
+  config_file = fopen(DEFAULT_CONFIGURATION_FILE, "rt");
+  if (!config_file)
+    suicide("Couldn't open configuration file: %s", DEFAULT_CONFIGURATION_FILE);
+  option_count = read_config_file (config_file, &config_file_options);
+  fclose(config_file);
+  parse_args ( option_count, config_file_options);  // Process configuration file
+  for (iii=0; iii < option_count; iii++)
+  { free (config_file_options [iii]);
+  }
+  free (config_file_options);
+  if (argc > 1)
+  { optind = 0;  // start at first option
+    opterr = 0;  // reset any error
+    optopt = 0;  // reset any error
+    optarg = NULL;  // reset any error
+    parse_args (argc, argv);  // Process command line
+  }
   
   if (gflags_detach) {
 #ifndef __APPLE__
     daemonize();
 #endif
   }
-  log_line(LOG_INFO,"Options parsed, continuing.");
+  if (gflags_quiet < 2)
+    log_line(LOG_INFO,"Options parsed, continuing.");
   
   if (gflags_detach)
     route_output();
@@ -275,15 +443,20 @@ int main(int argc, char **argv) {
     suicide("No supported devices found, shutting down");
   }
   
-  log_line(LOG_DEBUG, "Found %d device(s):", device_count);
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG, "Found %d device(s):", device_count);
   for (i = 0; i <(unsigned int)device_count; i++)
-    log_line(LOG_DEBUG, "  %d:  %s", i, rtlsdr_get_device_name(i));
-  log_line(LOG_DEBUG, "Using device %d: %s", dev_index,
+  { if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "  %d:  %s", i, rtlsdr_get_device_name(i));
+  }
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG, "Using device %d: %s", dev_index,
 	   rtlsdr_get_device_name(dev_index));
   
   r = rtlsdr_open(&dev, dev_index);
   if (r < 0) {
-    log_line(LOG_DEBUG, "Failed to open rtlsdr device #%d.", dev_index);
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "Failed to open rtlsdr device #%d.", dev_index);
     exit(EXIT_FAILURE);
   }
   
@@ -299,36 +472,46 @@ int main(int argc, char **argv) {
   /* Set the sample rate */
   r = rtlsdr_set_sample_rate(dev, samp_rate);
   if (r < 0)
-    log_line(LOG_DEBUG, "WARNING: Failed to set sample rate.");
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "WARNING: Failed to set sample rate.");
   
   /* Reset endpoint before we start reading from it (mandatory) */
   r = rtlsdr_reset_buffer(dev);
   if (r < 0)
-    log_line(LOG_DEBUG, "WARNING: Failed to reset buffers.");
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "WARNING: Failed to reset buffers.");
   
-  log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG, "Setting Frequency to %d", frequency);
   r = rtlsdr_set_center_freq(dev, (uint32_t)frequency);
   
   gain = nearest_gain(gain);
-  log_line(LOG_DEBUG, "Setting gain to %0.2f", gain/10.0);
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG, "Setting gain to %0.2f", gain/10.0);
   /* Manual gain mode */
   r = rtlsdr_set_tuner_gain_mode(dev, 1);
   if (r < 0)
-    log_line(LOG_DEBUG, "WARNING: Failed to set manual gain");
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "WARNING: Failed to set manual gain");
   r = rtlsdr_set_tuner_gain(dev, gain);
   if (r < 0)
-    log_line(LOG_DEBUG, "WARNING: Failed to set gain");
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "WARNING: Failed to set gain");
   
-  log_line(LOG_DEBUG, "Doing FIPS init");
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG, "Doing FIPS init");
   fips_init(&fipsctx, (int)0);
   
-  log_line(LOG_DEBUG, "Reading samples in sync mode...");
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG, "Reading samples in sync mode...");
   while ( (!do_exit) || (do_exit == SIGPIPE)) {
     if (do_exit == SIGPIPE) {
-      log_line(LOG_DEBUG, "Reader went away, closing FIFO");
+      if (gflags_quiet < 3)
+          log_line(LOG_DEBUG, "Reader went away, closing FIFO");
       fclose(output);
       if (gflags_detach) {
-	log_line(LOG_DEBUG, "Waiting for a Reader...");
+  if (gflags_quiet < 3)
+    log_line(LOG_DEBUG, "Waiting for a Reader...");
 	output = fopen(DEFAULT_OUT_FILE,"w");
       }
       else {
@@ -337,11 +520,13 @@ int main(int argc, char **argv) {
     }
     r = rtlsdr_read_sync(dev, buffer, out_block_size, &n_read);
     if (r < 0) {
-      log_line(LOG_DEBUG, "ERROR: sync read failed: %d", r);
+      if (gflags_quiet < 3)
+        log_line(LOG_DEBUG, "ERROR: sync read failed: %d", r);
       break;
     }
     if ((uint32_t)n_read < out_block_size) {
-      log_line(LOG_DEBUG, "ERROR: Short read, samples lost, exiting!");
+      if (gflags_quiet < 3)
+        log_line(LOG_DEBUG, "ERROR: Short read, samples lost, exiting!");
       break;
     }
     
@@ -422,7 +607,7 @@ int main(int argc, char **argv) {
 	  } else {   /* FIPS test failed */
 	    for (j=0; j< N_FIPS_TESTS; j++) {
 	      if (fips_result & fips_test_mask[j]) {
-		if (!gflags_detach)
+		if (!gflags_detach && gflags_quiet < 1)
 		  log_line(LOG_DEBUG, "Failed: %s", fips_test_names[j]);
 	      }
 	    }
@@ -436,9 +621,11 @@ int main(int argc, char **argv) {
     }
   }
   if (do_exit) {
-    log_line(LOG_DEBUG, "\nUser cancel, exiting...");
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "\nUser cancel, exiting...");
   }  else {
-    log_line(LOG_DEBUG, "\nLibrary error %d, exiting...", r);
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "\nLibrary error %d, exiting...", r);
   }
   
   rtlsdr_close(dev);
