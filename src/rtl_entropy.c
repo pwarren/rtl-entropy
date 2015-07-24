@@ -146,6 +146,7 @@ void parse_args(int argc, char ** argv)
 
   char *arg_string= "a:bc:d:ef:g:ho:p:q:s:u:";
     
+  optind = 1;  // start at 1 in argv, allows reuse 
   while(1)
   { opt = getopt_long (argc, argv, arg_string, long_options, NULL);
     if (opt == -1)
@@ -225,67 +226,72 @@ void parse_args(int argc, char ** argv)
    Everything from the file is put into an argv like array.
 */
 
-int read_config_file (FILE * infile, char ***config_options)
-{
-  char *curr_option, *retptr, *workline, *cmnt, *token;
+int read_config_file ( FILE * infile, char ***config_options )
+{ char *curr_option, *retptr, *workline, *cmnt, *newline, *token;
   char **all_options;
   int iii, line_count = 0, configuration_count = 0;
 
-  workline= StrMem (256);
-  curr_option = StrnDup ("rtl_entropy");  // save the program name to simulate argv
-  all_options = (char **) StrMem ((sizeof (char *)) * (configuration_count+1));  // allocate an array for option char pointers, including the new option
-  configuration_count++;  // update the option count
-  *(all_options + configuration_count - 1) = curr_option;  // append the new option pointer
+  workline = StrMem ( 256 );
+  curr_option = StrnDup ( "rtl_entropy" );  // save the program name to simulate argv
+  all_options = ( char ** ) StrMem ( ( sizeof ( char * ) ) * ( configuration_count + 1 ) ); // allocate an array for option char pointers, including the new option
+  configuration_count++;        // update the option count
+  *( all_options + configuration_count - 1 ) = curr_option; // append the new option pointer
   *config_options = all_options;  // point to the new option pointer array
-  retptr = fgets (workline, 256, infile);
-  if (retptr == NULL)
-    suicide ("Unable to read line from configuration file");
-  while (*workline != '\0')
+  retptr = fgets ( workline, 256, infile );
+  if ( retptr == NULL )
+    suicide ( "Unable to read line from configuration file" );
+  while ( *workline != '\0' )
   { line_count++;
-    token = strtok (workline, " \t\n");    // get first token separated by spaces, tabs, or newline
-    if (token)                  // not an empty line
-    { cmnt = strchr (workline, '#');
-      if (token[0] == '-')      // options line
-      { if (cmnt)
-          strncpy (cmnt, "\0", 1);     // truncate at comment
-        curr_option = StrnDup (workline);  // duplicate the option
-        all_options = (char **) StrMem ((sizeof (char *)) * (configuration_count+1));  // allocate an array for option char pointers, including the new option
-        for (iii = 0; iii < configuration_count; iii++)  // transfer existing pointers to the new array of option pointers
-        { *(all_options + iii) = *((*config_options) + iii);
+    curr_option = StrnDup ( workline ); // duplicate the line before parsing destroys it.
+    token = strtok ( workline, " \t\n" ); // get first token separated by spaces, tabs, or newline, modifies workline
+    if ( token )                // not an empty line
+    { cmnt = strchr ( curr_option, '#' );
+      if ( token[0] == '-' )    // options line
+      { if ( cmnt )
+          strncpy ( cmnt, "\0", 1 );  // truncate duplicated line at comment
+        else  // line must end in newline
+        { newline = strchr ( curr_option, '\n' );
+          strncpy ( newline, "\0", 1 );  // truncate duplicated line at newline
+        }
+        all_options = ( char ** ) StrMem ( ( sizeof ( char * ) ) * ( configuration_count + 1 ) ); // allocate an array for option char pointers, including the new option
+        for ( iii = 0; iii < configuration_count; iii++ ) // transfer existing pointers to the new array of option pointers
+        { *( all_options + iii ) = *( ( *config_options ) + iii );
         }
         configuration_count++;  // update the option count
-        *(all_options + configuration_count - 1) = curr_option;  // append the new option pointer
-        free (*config_options);  // free the existing option pointer array
+        *( all_options + configuration_count - 1 ) = curr_option; // append the new option pointer
+        free ( *config_options ); // free the existing option pointer array
         *config_options = all_options;  // point to the new option pointer array
       }
-      else if (token[0] == '#') // line is a comment
-        ;  // do nothing
+      else if ( token[0] == '#' ) // line is a comment
+        free (curr_option);       // not an option, free the memory
       else
-      { if (gflags_quiet < 3)
-          log_line(LOG_DEBUG, "Skipped line %d in configuration file with invalid %s at start of line", line_count, token);
+      { if ( gflags_quiet < 3 )
+          log_line ( LOG_DEBUG, "Skipped line %d in configuration file with invalid %s at start of line", line_count,
+                     token );
+        free (curr_option);       // not an option, free the memory
       }
     }
-    memset (workline, 0x00, 256);
-    retptr = fgets (workline, 256, infile);
+    memset ( workline, 0x00, 256 );
+    retptr = fgets ( workline, 256, infile );
   }
-  curr_option = NULL;  // terminate like argv is terminated, with a null char*.
-  all_options = (char **) StrMem ((sizeof (char *)) * (configuration_count+1));  // allocate an array for option char pointers, including the new option
-  for (iii = 0; iii < configuration_count; iii++)  // transfer existing pointers to the new array of option pointers
-  { *(all_options + iii) = *((*config_options) + iii);
+  curr_option = NULL;           // terminate like argv is terminated, with a null char*.
+  all_options = ( char ** ) StrMem ( ( sizeof ( char * ) ) * ( configuration_count + 1 ) ); // allocate an array for option char pointers, including the new option
+  for ( iii = 0; iii < configuration_count; iii++ ) // transfer existing pointers to the new array of option pointers
+  { *( all_options + iii ) = *( ( *config_options ) + iii );
   }
-  *(all_options + configuration_count) = curr_option;
-  free (*config_options);  // free the existing option pointer array
+  *( all_options + configuration_count ) = curr_option;
+  free ( *config_options );     // free the existing option pointer array
   //config_options = &all_options;  // point to the new option pointer array
   *config_options = all_options;  // point to the new option pointer array
-  if (*workline == '\0')
-  { if (feof (infile))
-    { free (workline);
+  if ( *workline == '\0' )
+  { if ( feof ( infile ) )
+    { free ( workline );
       return configuration_count;
     }
-    free (workline);
-    suicide ("Read error on configuration file");
+    free ( workline );
+    suicide ( "Read error on configuration file" );
   }
-  free (workline);
+  free ( workline );
   return configuration_count;
 }
 
