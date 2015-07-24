@@ -119,7 +119,7 @@ void usage(void)
 #ifndef __APPLE__
   fprintf(stderr, "--user,          -u []  User to run as (default: rtl_entropy)\n");
 #endif
-  fprintf(stderr, "Configuration file at /etc/sysconfig/rtl_entropy has more detail and sample values.\n");
+  fprintf(stderr, "Configuration file at /etc/{,sysconfig/}rtl_entropy has more detail and sample values.\n");
   fprintf(stderr, "\n");
   exit(EXIT_SUCCESS);
 }
