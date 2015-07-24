@@ -61,11 +61,10 @@ static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 uint32_t dev_index = 0;
 uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 uint32_t frequency = DEFAULT_FREQUENCY;
-#define DEFAULT_CONFIGURATION_FILE        "/etc/sysconfig/rtl_entropy"
-#define PID_FILE                          "/var/run/rtl_entropy.pid"
 int opt = 0;
 int redirect_output = 0;
 int gflags_encryption = 0;
+int gflags_config = 0;
 int gflags_quiet = 0;
 int device_count = 0;
 float gain = 1000.0;
@@ -75,6 +74,7 @@ int uid = -1, gid = -1;
 
 /* File handling stuff */
 FILE *output = NULL;
+FILE *config = NULL;
 
 /* Buffers */
 unsigned char bitbuffer[BUFFER_SIZE] = {0};
@@ -100,6 +100,7 @@ void usage(void)
 #ifndef __APPLE__
   fprintf(stderr, "--daemonize,     -b     Daemonize\n");
 #endif
+  fprintf(stderr, "--config_file,   -c []  Configuration file (defaults: /etc/rtl_entropy.conf, /etc/sysconfig/rtl_entropy.conf)\n");
   fprintf(stderr, "--device_idx,    -d []  Device index (default: %i)\n", dev_index);
   fprintf(stderr, "--encrpyt,       -e     Encrypt output\n");
   fprintf(stderr, "--frequency,     -f []  Set frequency to listen (default: %i MHz)\n", frequency);
@@ -127,6 +128,7 @@ void parse_args(int argc, char ** argv)
   static struct option long_options[] =
   { {"amplify",  1, NULL, 'a' },
     {"daemonize",  0, NULL, 'b' },
+    {"config_file",  1, NULL, 'c' },
     {"device_idx",  1, NULL, 'd' },
     {"encrypt",  0, NULL, 'e' },
     {"frequency", 1, NULL, 'f' },
@@ -140,7 +142,7 @@ void parse_args(int argc, char ** argv)
     {NULL,    0, NULL, 0   }
   };
 
-  char *arg_string= "a:bd:ef:g:ho:p:q:s:u:";
+  char *arg_string= "a:bc:d:ef:g:ho:p:q:s:u:";
     
   while(1)
   { opt = getopt_long (argc, argv, arg_string, long_options, NULL);
@@ -153,6 +155,14 @@ void parse_args(int argc, char ** argv)
 
       case 'b':
         gflags_detach = 1;
+        break;
+        
+      case 'c':
+        gflags_config = 1;
+        config = fopen(optarg,"rt");
+        if (config == NULL)
+        { suicide("Couldn't open config file");
+        }
         break;
         
       case 'd':
@@ -216,8 +226,7 @@ void parse_args(int argc, char ** argv)
    Everything from the file is put into an argv like array.
 */
 
-int
-read_config_file (FILE * infile, char ***config_options)
+int read_config_file (FILE * infile, char ***config_options)
 {
   char *curr_option, *retptr, *workline, *cmnt, *token;
   char **all_options;
@@ -281,16 +290,14 @@ read_config_file (FILE * infile, char ***config_options)
   return configuration_count;
 }
 
-void *
-Alloc (size_t len)
+void * Alloc (size_t len)
 { void *p = calloc (1, len);
   if (!p)
     suicide ("Out of memory in request for %u", len);
   return p;
 }
 
-char *
-StrnDup (char *str)
+char * StrnDup (char *str)
 { size_t len = strlen (str);
   char *rv = strndup (str, len);
   if (!rv)
@@ -302,16 +309,13 @@ StrnDup (char *str)
  * Strings allocated with this routine can use the StrCat
  * routine below safely.  Does *not* allocate an extra
  * position for the NULL terminator.  Callers responsibility. */
-char *
-StrMem (size_t slen)
+char * StrMem (size_t slen)
 { char *nstr = NULL;
   nstr = (char *) Alloc (slen);
   if (!nstr)
     suicide ("Out of memory in StrMem");
   return nstr;
 }
-
-
 
 static void sighandler(int signum)
 {
@@ -397,19 +401,13 @@ int main(int argc, char **argv) {
   int output_ready;
 
   int option_count = 0, iii;
-  FILE *config_file;
   char **config_file_options;
 
-  config_file = fopen(DEFAULT_CONFIGURATION_FILE, "rt");
-  if (!config_file)
-    suicide("Couldn't open configuration file: %s", DEFAULT_CONFIGURATION_FILE);
-  option_count = read_config_file (config_file, &config_file_options);
-  fclose(config_file);
-  parse_args ( option_count, config_file_options);  // Process configuration file
-  for (iii=0; iii < option_count; iii++)
-  { free (config_file_options [iii]);
-  }
-  free (config_file_options);
+  /* Parse command line options in a first pass to determine if there
+   * is a config file requested on the command line.  If there is, it
+   * will be processed before we process config file options, so it
+   * takes precedence.
+   */
   if (argc > 1)
   { optind = 0;  // start at first option
     opterr = 0;  // reset any error
@@ -417,6 +415,43 @@ int main(int argc, char **argv) {
     optarg = NULL;  // reset any error
     parse_args (argc, argv);  // Process command line
   }
+  if (gflags_config)
+  { option_count = read_config_file (config, &config_file_options);
+    fclose(config);
+  }
+  else
+  { config = fopen(DEFAULT_CONFIGURATION_FILE_1, "rt");
+    if (config)
+    { option_count = read_config_file (config, &config_file_options);
+      fclose(config);
+    }
+    else
+    { config = fopen(DEFAULT_CONFIGURATION_FILE_2, "rt");
+      if (config)
+      { option_count = read_config_file (config, &config_file_options);
+        fclose(config);
+      }
+      else
+        log_line(LOG_INFO,"No configuration file found, continuing with defaults.");
+    }
+  }
+  if (option_count > 1)  // if there are configuration file options
+  {
+    parse_args ( option_count, config_file_options);  // Process configuration file
+    for (iii=0; iii < option_count; iii++)
+    { free (config_file_options [iii]);
+    }
+    free (config_file_options);
+  }
+  if (argc > 1)
+  { optind = 0;  // start at first option
+    opterr = 0;  // reset any error
+    optopt = 0;  // reset any error
+    optarg = NULL;  // reset any error
+    parse_args (argc, argv);  // Process command line
+  }
+  if (config)
+    fclose (config);  // processed above, but will have been re-opened here.  Not needed.
   
   if (gflags_detach) {
 #ifndef __APPLE__
