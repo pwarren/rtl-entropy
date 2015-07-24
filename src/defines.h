@@ -19,6 +19,8 @@
 
 #define DEFAULT_PID_FILE "/var/run/rtl_entropy.pid"
 #define DEFAULT_OUT_FILE "/var/run/rtl_entropy.fifo"
+#define DEFAULT_CONFIGURATION_FILE_1      "/etc/rtl_entropy.conf"
+#define DEFAULT_CONFIGURATION_FILE_2      "/etc/sysconfig/rtl_entropy.conf"
 
 #define MHZ(x)	((x)*1000*1000)
 #define DEFAULT_SAMPLE_RATE		3200000
