@@ -63,8 +63,10 @@ uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 uint32_t frequency = DEFAULT_FREQUENCY;
 int opt = 0;
 int redirect_output = 0;
+char *output_name = NULL;
 int gflags_encryption = 0;
 int gflags_config = 0;
+char *config_name = NULL;
 int gflags_quiet = 0;
 int device_count = 0;
 float gain = 1000.0;
@@ -159,10 +161,9 @@ void parse_args(int argc, char ** argv)
         
       case 'c':
         gflags_config = 1;
-        config = fopen(optarg,"rt");
-        if (config == NULL)
-        { suicide("Couldn't open config file");
-        }
+        if (config_name != NULL)
+          free (config_name);
+        config_name = (char *) StrnDup (optarg);
         break;
         
       case 'd':
@@ -187,11 +188,9 @@ void parse_args(int argc, char ** argv)
         
       case 'o':
         redirect_output = 1;
-        output = fopen(optarg,"w");
-        if (output == NULL)
-        { suicide("Couldn't open output file");
-        }
-        fclose(stdout);
+        if (output_name != NULL)
+          free (output_name);
+        output_name = (char *) StrnDup (optarg);
         break;
         
       case 'p':
@@ -416,7 +415,13 @@ int main(int argc, char **argv) {
     parse_args (argc, argv);  // Process command line
   }
   if (gflags_config)
-  { option_count = read_config_file (config, &config_file_options);
+  { config = fopen(config_name,"rt");
+    if (config == NULL)
+    { log_line(LOG_INFO, "Couldn't open config file %s", config_name);
+      free (config_name);
+      suicide("Exiting");
+    }
+    option_count = read_config_file (config, &config_file_options);
     fclose(config);
   }
   else
@@ -450,9 +455,17 @@ int main(int argc, char **argv) {
     optarg = NULL;  // reset any error
     parse_args (argc, argv);  // Process command line
   }
-  if (config)
-    fclose (config);  // processed above, but will have been re-opened here.  Not needed.
-  
+  if (config_name != NULL)
+    free (config_name); // processed above, but possibly saved again here.  Free.
+  if (redirect_output == 1)
+  { output = fopen(output_name,"w");
+    if (output == NULL)
+    { log_line(LOG_INFO, "Couldn't open output file %s", output_name);
+      suicide("Exiting");
+    }
+    free (output_name);
+    fclose(stdout);
+  }
   if (gflags_detach) {
 #ifndef __APPLE__
     daemonize();
