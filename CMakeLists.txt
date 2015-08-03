@@ -81,22 +81,32 @@ find_package(PkgConfig)
 find_package(LibRTLSDR)
 find_package(LibbladeRF)
 find_package(OpenSSL)
-find_package(LibCAP)
+IF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+  find_package(LibCAP)
+ENDIF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
 
 ########################################################################
 # Setup the include and linker paths
 ########################################################################
 include_directories(
   ${OPENSSL_INCLUDE_DIRS}
-  ${LibCAP_INCLUDE_DIR}
   ${LIBRTLSDR_INCLUDE_DIRS}
 )
+IF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+  include_directories(
+    ${LibCAP_INCLUDE_DIR}
+  )
+ENDIF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
 
 link_directories(
   ${OPENSSL_LIBRARIES}
-  ${LibCAP_LIBRARY}
   ${LIBRTLSDR_LIBRARIES}
 )
+IF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+  link_directories(
+    ${LibCAP_LIBRARY}
+  )
+ENDIF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
 
 add_subdirectory(src)
 

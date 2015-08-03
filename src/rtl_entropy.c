@@ -39,7 +39,7 @@
 #include <openssl/aes.h>
 
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || (__FreeBSD__)
 #include <sys/time.h>
 #else
 #include <time.h>
@@ -95,31 +95,39 @@ void * Alloc (size_t len);
 char * StrnDup (char *str);
 char * StrMem (size_t slen);
 
-void usage(void)
-{ fprintf(stderr, "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n");
-  fprintf(stderr, "Usage: rtl_entropy [options]\n");
-  fprintf(stderr, "--amplify,       -a []  Set gain (default: max for dongle)\n");
-#ifndef __APPLE__
-  fprintf(stderr, "--daemonize,     -b     Daemonize\n");
+void usage(void) {
+  fprintf(stderr,
+	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
+	  "Usage: rtl_entropy [options]\n"
+	  "\t-a Set gain (default: max for dongle)\n"
+	  "\t-d Device index (default: 0)\n"
+	  "\t-e Encrypt output\n"
+	  "\t-f Set frequency to listen (default: 70MHz )\n"
+	  "\t-s Samplerate (default: 3200000 Hz)\n");
+  fprintf(stderr,
+	  "\t-o Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
+	  "\t-p PID file (default: /var/run/rtl_entropy.pid)\n"
+	  "\t-b Daemonize\n"
+	  "\t-u User to run as (default: rtl_entropy)\n"
+	  "\t-g Group to run as (default: rtl_entropy)\n"
 #endif
-  fprintf(stderr, "--config_file,   -c []  Configuration file (defaults: /etc/rtl_entropy.conf, /etc/sysconfig/rtl_entropy.conf)\n");
-  fprintf(stderr, "--device_idx,    -d []  Device index (default: %i)\n", dev_index);
-  fprintf(stderr, "--encrpyt,       -e     Encrypt output\n");
-  fprintf(stderr, "--frequency,     -f []  Set frequency to listen (default: %i MHz)\n", frequency);
-#ifndef __APPLE__
-  fprintf(stderr, "--group,         -g []  Group to run as (default: rtl_entropy)\n");
+	  );
+  // Long options
+  fprintf(stderr, "\t--config_file,   -c []  Configuration file (defaults: /etc/rtl_entropy.conf, /etc/sysconfig/rtl_entropy.conf)\n");
+  fprintf(stderr, "\t--device_idx,    -d []  Device index (default: %i)\n", dev_index);
+  fprintf(stderr, "\t--encrpyt,       -e     Encrypt output\n");
+  fprintf(stderr, "\t--frequency,     -f []  Set frequency to listen (default: %i MHz)\n", frequency);
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
+  fprintf(stderr, "\t--group,         -g []  Group to run as (default: rtl_entropy)\n");
+  fprintf(stderr, "\t--pid_file,      -p []  PID file (default: /var/run/rtl_entropy.pid)\n");
+  fprintf(stderr, "\t--user,          -u []  User to run as (default: rtl_entropy)\n");
 #endif
-  fprintf(stderr, "--help,          -h     This help. (Default no)\n");
-  fprintf(stderr, "--output_file,   -o []  Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n");
-#ifndef __APPLE__
-  fprintf(stderr, "--pid_file,      -p []  PID file (default: /var/run/rtl_entropy.pid)\n");
-#endif
-  fprintf(stderr, "--quiet,         -q []  quiet level, how much output to print, 0-3 (default: %i, print all)\n", gflags_quiet);
-  fprintf(stderr, "--sample_rate,   -s []  Samplerate (default: %i Hz)\n", samp_rate);
-#ifndef __APPLE__
-  fprintf(stderr, "--user,          -u []  User to run as (default: rtl_entropy)\n");
-#endif
-  fprintf(stderr, "Configuration file at /etc/{,sysconfig/}rtl_entropy has more detail and sample values.\n");
+  fprintf(stderr, "\t--help,          -h     This help. (Default no)\n");
+  fprintf(stderr, "\t--output_file,   -o []  Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n");
+  fprintf(stderr, "\t--quiet,         -q []  quiet level, how much output to print, 0-3 (default: %i, print all)\n", gflags_quiet);
+  fprintf(stderr, "\t--sample_rate,   -s []  Samplerate (default: %i Hz)\n", samp_rate);
+  fprintf(stderr, "\tConfiguration file at /etc/{,sysconfig/}rtl_entropy has more detail and sample values.\n");
   fprintf(stderr, "\n");
   exit(EXIT_SUCCESS);
 }
@@ -327,7 +335,7 @@ static void sighandler(int signum)
   do_exit = signum;
 }
 
-#ifndef __APPLE__
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
 static void drop_privs(int uid, int gid)
 {
   cap_t caps;
@@ -473,7 +481,7 @@ int main(int argc, char **argv) {
     fclose(stdout);
   }
   if (gflags_detach) {
-#ifndef __APPLE__
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
     daemonize();
 #endif
   }
@@ -485,7 +493,7 @@ int main(int argc, char **argv) {
   
   if (!redirect_output)
     output = stdout;
-#ifndef __APPLE__  
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
   if (uid != -1 && gid != -1)
     drop_privs(uid, gid);
 #endif
