@@ -9,6 +9,10 @@ Both of these are analog entropy sources.
 
 This software has been tested on debian linux 7.1, but should work on any linux distribution, and might run on OS X and other POSIX compliant operating systems.
 
+## Local modification
+
+* Add FreeBSD flag and remove all libcap dependencies for FreeBSD
+
 Links
 -----
 [lists](http://lists.rtl-entropy.org/)

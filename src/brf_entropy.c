@@ -37,7 +37,7 @@
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 
-#ifdef __APPLE__
+#if defined(__APPLE__) || (__FreeBSD__)
 #include <sys/time.h>
 #else
 #include <time.h>
@@ -101,7 +101,7 @@ void usage(void) {
 	  "\t-s Samplerate (default: 40 MHz)\n");
   fprintf(stderr,
 	  "\t-o Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
-#ifndef __APPLE__
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
 	  "\t-p PID file (default: /var/run/rtl_entropy.pid)\n"
 	  "\t-b Daemonize\n"
 	  "\t-u User to run as (default: rtl_entropy)\n"
@@ -180,7 +180,7 @@ static void sighandler(int signum)
   do_exit = signum;
 }
 
-#ifndef __APPLE__
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
 static void drop_privs(int uid, int gid)
 {
   cap_t caps;
@@ -347,13 +347,13 @@ int main(int argc, char **argv) {
   parse_args(argc, argv);
   
   if (gflags_detach) {
-#ifndef __APPLE__
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
     daemonize();
 #endif
   }
   log_line(LOG_INFO,"Options parsed, continuing.");
   
-#ifndef __APPLE__  
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
   if (uid != -1 && gid != -1)
     drop_privs(uid, gid);
 #endif
