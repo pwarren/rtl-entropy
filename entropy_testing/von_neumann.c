@@ -52,10 +52,6 @@ int main(int argc, char **argv) {
        debias, storing useful bits in write buffer, 
        and discarded bits in hash buffer
        until the write buffer is full.
-       create a key by SHA512() hashing the hash buffer
-       encrypt write buffer with key
-       output encrypted buffer
-       
     */
     
     /* debias(buffer, bitbuffer, n_read, sizeof(buffer[0])); */

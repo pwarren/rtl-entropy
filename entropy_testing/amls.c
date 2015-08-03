@@ -1,7 +1,7 @@
 /*
  * amls.c
  * Reads from  stdin data.
- * Outputs whitened data to file or stdout.
+ * Outputs whitened data to stdout.
  *
  * Copyright (C) 2013 by Paul Warren <pwarren@pwarren.id.au>
 
