@@ -2,8 +2,8 @@
 
 
 import numpy
-
-input = open("test.out","r")
+import sys
+input = open(sys.argv[1],"r")
 
 data = numpy.fromfile(input, dtype=numpy.int16)
 
