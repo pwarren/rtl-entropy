@@ -24,21 +24,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
-
-
-/*
-
-In this file, parse the CLI options, and setup the data path as specified.
-
-In more detail
-* parse command line
-* set up input threads
-* set up processing threads and pipes from input threads
-* set up output and pipes from final processing thread
-
- */
-
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -71,7 +56,7 @@ In more detail
 static int do_exit = 0;
 /*@NULL@*/
 static rtlsdr_dev_t *dev = NULL;
-static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
+static fips_ctx_t fipsctx;		/* FIPS tests context */
 uint32_t dev_index = 0;
 uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 uint32_t frequency = DEFAULT_FREQUENCY;
@@ -226,28 +211,6 @@ void route_output(void) {
   }
 }
 
-int nearest_gain(int target_gain){
-  int i, err1, err2, count, close_gain;
-  int* gains;
-  count = rtlsdr_get_tuner_gains(dev, NULL);
-  if (count <= 0) {
-    return 0;
-  }
-  gains = malloc(sizeof(int) * count);
-  count = rtlsdr_get_tuner_gains(dev, gains);
-  close_gain = gains[0];
-  log_line(LOG_DEBUG,"Your device is capable of gains at...");
-  for (i=0; i<count; i++) {
-    log_line(LOG_DEBUG," : %0.2f", gains[i]/10.0);
-    err1 = abs(target_gain - close_gain);
-    err2 = abs(target_gain - gains[i]);
-    if (err2 < err1) {
-      close_gain = gains[i];
-    }
-  }
-  free(gains);
-  return close_gain;
-}
 
 
 
