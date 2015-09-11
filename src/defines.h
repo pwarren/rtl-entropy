@@ -27,8 +27,8 @@
 #define MINIMAL_BUF_LENGTH		512
 #define MAXIMAL_BUF_LENGTH		(256 * 16384)
 #define BUFFER_SIZE                     2500 /* need 2500 bits for FIPS */
-#define DEFAULT_FREQUENCY MHZ(70)
+#define DEFAULT_FREQUENCY MHZ(70) 
 #define HASH_BUFFER_SIZE  64 /* Bytes */
 
-#define GFLAGS_DETACH 0
-#define GFLAGS_DEBUG 1
+#define OUTPUT_FILE 1
+#define OUTPUT_POOL 2

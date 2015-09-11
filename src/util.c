@@ -148,7 +148,7 @@ unsigned char *aes_encrypt(EVP_CIPHER_CTX *e, unsigned char *plaintext, int *len
   EVP_EncryptInit_ex(e, NULL, NULL, NULL, NULL);
   
   /* update ciphertext, c_len is filled with the length of ciphertext generated,
-   *len is the size of plaintext in bytes */
+   * len is the size of plaintext in bytes */
   EVP_EncryptUpdate(e, ciphertext, &c_len, plaintext, *len);
   /* update ciphertext with the final remaining bytes */
   EVP_EncryptFinal_ex(e, ciphertext+c_len, &f_len);
@@ -182,7 +182,6 @@ int debias(int16_t one, int16_t two, int bit_index) {
   /* Debias the bit pair at bit_index */
   int ch1,ch2;
 
-  
   ch1 = (one >> bit_index) & 0x01;
   ch2 = (two >> bit_index) & 0x01;
   if (ch1 != ch2) {
