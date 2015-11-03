@@ -1,0 +1,13 @@
+[Unit]
+Description=RTL-SDR Hardware Random Number Generator
+Documentation=https://github.com/pwarren/rtl-entropy/
+DefaultDependencies=no
+
+[Service]
+ExecStart=/usr/local/bin/rtl_entropy -b -f 74M -e
+ExecStop=/usr/bin/pkill rtl_entropy
+ExecStopPost=/bin/rm -f /run/rtl_entropy.fifo /run/rtl_entropy.pid
+PIDFile=/run/rtl_entropy.pid
+
+[Install]
+WantedBy=multi-user.target
