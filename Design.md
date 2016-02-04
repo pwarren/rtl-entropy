@@ -79,3 +79,11 @@ Program Flow
 
 Really need a bitstream style abstraction for all this! Doable with a lot of buffers and buffer counters I suppose, probably already an implementation available.
 
+
+
+Other Considerations
+====================
+
+Maybe just stick with library-ifying the common code, then do a SoapyEntropy tool which does the above using SoapySDR input abstraction.
+
+
