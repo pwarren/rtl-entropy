@@ -3,7 +3,7 @@ rtl-entropy
 
 rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing, runs it through the FIPS 140-2 tests, then optionally (-e) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
 
-If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 50 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio. 
+If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 75 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio. 
 
 Both of these are analog entropy sources.
 
