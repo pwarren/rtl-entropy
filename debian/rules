@@ -15,7 +15,7 @@
 
 
 %:
-	dh $@ --buildsystem=cmake --sourcedirectory=build
+	dh $@ --buildsystem=cmake 
 
 
 # dh_make generated override targets
