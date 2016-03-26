@@ -22,7 +22,7 @@ fi
 DESC="rtl-entropy"
 
 CHAN_RANGE=$(( ( RANDOM % 200000000 )  + 90000000 ))
-SAMPLE_RATE_RANGE=$(( ( RANDOM % 2400000 )  + 1800000 ))
+SAMPLE_RATE_RANGE=2400000
 
 RTL_ENTROPY_DAEMON=/usr/bin/rtl-entropy
 RTL_ENTROPY_DAEMON_USER=rtl_entropy
@@ -39,10 +39,10 @@ RNGD_DAEMON_OPS=" -r $RTL_ENTROPY_FIFO_FILE -W95%"
 
 do_start () {
 	log_daemon_msg "Starting $RTL_ENTROPY_DAEMON_NAME  daemon"
-	start-stop-daemon --start --background --pidfile $RTL_ENTROPY_PID_FILE --make-pidfile --startas RTL_ENTROPY_DAEMON -- RTL_ENTROPY_OPS 
+	start-stop-daemon --start --background --pidfile $RTL_ENTROPY_PID_FILE --make-pidfile --startas $RTL_ENTROPY_DAEMON -- $RTL_ENTROPY_OPS 
 	log_end_msg $?
 	log_daemon_msg "Starting $RNGD_DAEMON_NAME daemon"		
-	start-stop-daemon --start --background --pidfile $RNGD_PID_FILE  --make-pidfile --startas $RNGD_DAEMON_NAME -- RNGD_DAEMON_OPS
+	start-stop-daemon --start --background --pidfile $RNGD_PID_FILE  --make-pidfile --startas $RNGD_DAEMON_NAME -- $RNGD_DAEMON_OPS
 }
 
 do_stop () {
