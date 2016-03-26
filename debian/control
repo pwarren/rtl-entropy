@@ -1,0 +1,13 @@
+Source: rtl-entropy
+Section: unknown
+Priority: optional
+Maintainer: Matthew Weger matthew.d.weger@gmail.com
+>
+Build-Depends: debhelper (>=9)
+Standards-Version: 3.9.6
+#Vcs-Browser: https://github.com/pwarren/rtl-entropy
+
+Package: rtl-entropy
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing, runs it through the FIPS 140-2 tests, then optionally (-e) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output.
