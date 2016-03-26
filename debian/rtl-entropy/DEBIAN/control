@@ -1,9 +1,0 @@
-Package: rtl-entropy
-Version: 1.0-1
-Architecture: amd64
-Maintainer: Matthew Weger matthew.d.weger@gmail.com
-Installed-Size: 84
-Depends: libc6 (>= 2.4), libcap2 (>= 1:2.10), librtlsdr0, libssl1.0.2 (>= 1.0.2d)
-Section: unknown
-Priority: optional
-Description: rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing, runs it through the FIPS 140-2 tests, then optionally (-e) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output.
