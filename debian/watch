@@ -29,8 +29,8 @@ version=4
 #   rtl-entropy-(.+)\.tar\.gz debian uupdate
 
 # Direct Git
-# opts="mode=git" http://git.example.com/rtl-entropy.git \
-#   refs/tags/v([\d\.]+) debian uupdate
+ opts="mode=git" https://github.com/W-M-D/rtl-entropy.git \
+   refs/tags/v([\d\.]+) debian uupdate
 
 
 
