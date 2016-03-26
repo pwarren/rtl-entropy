@@ -38,10 +38,10 @@ RNGD_DAEMON_OPS=" -r $RTL_ENTROPY_FIFO_FILE -W95%"
 
 
 do_start () {
-	log_daemon_msg "Starting $RTL_ENTROPY_DAEMON_NAME  daemon"
+	log_daemon_msg "Starting $RTL_ENTROPY_DAEMON_NAME  daemon with ops $RTL_ENTROPY_OPS"
 	start-stop-daemon --start --background --pidfile $RTL_ENTROPY_PID_FILE --make-pidfile --startas $RTL_ENTROPY_DAEMON -- $RTL_ENTROPY_OPS 
 	log_end_msg $?
-	log_daemon_msg "Starting $RNGD_DAEMON_NAME daemon"		
+	log_daemon_msg "Starting $RNGD_DAEMON_NAME daemon with ops $RNGD_DAEMON_OPS"		
 	start-stop-daemon --start --background --pidfile $RNGD_PID_FILE  --make-pidfile --startas $RNGD_DAEMON_NAME -- $RNGD_DAEMON_OPS
 }
 
