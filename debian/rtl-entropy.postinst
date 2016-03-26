@@ -16,10 +16,18 @@ set -e
 #          <conflicting-package> <version>
 # for details, see https://www.debian.org/doc/debian-policy/ or
 # the debian-policy package
+RTL_ENTROPY_FIFO=/var/run/rtl_entropy.fifo
 
 
 case "$1" in
     configure)
+		if [ -f /var/run/rtl_entropy.fifo ];
+			then
+	
+			else 
+			mkfifo $RTL_ENTROPY_FIFO
+		fi
+
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
