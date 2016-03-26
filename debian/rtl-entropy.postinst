@@ -23,9 +23,9 @@ case "$1" in
     configure)
 		if [ -f /var/run/rtl_entropy.fifo ];
 			then
-	
+				echo "$RTL_ENTROPY_FIFO already exists"	
 			else 
-			mkfifo $RTL_ENTROPY_FIFO
+				mkfifo $RTL_ENTROPY_FIFO
 		fi
 
     ;;
