@@ -3,7 +3,7 @@ Section: unknown
 Priority: optional
 Maintainer: Matthew Weger matthew.d.weger@gmail.com
 >
-Build-Depends: debhelper (>=9)
+Build-Depends: debhelper (>=9), cmake, librtlsdr-dev, libssl-dev,pkg-config,libcap-dev
 Standards-Version: 3.9.6
 #Vcs-Browser: https://github.com/pwarren/rtl-entropy
 
