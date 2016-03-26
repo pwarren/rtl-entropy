@@ -21,7 +21,7 @@ RTL_ENTROPY_FIFO=/var/run/rtl_entropy.fifo
 
 case "$1" in
     configure)
-		if [ -f /var/run/rtl_entropy.fifo ];
+		if [ -f $RTL_ENTROPY_FIFO ];
 			then
 				echo "$RTL_ENTROPY_FIFO already exists"	
 			else 
