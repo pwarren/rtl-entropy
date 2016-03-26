@@ -49,7 +49,7 @@ do_start () {
 do_stop () {
 	log_daemon_msg "Stoping $RTL_ENTROPY_DAEMON_NAME and $RNGD_DAEMON_NAME daemon"
 	start-stop-daemon --stop --pidfile $RTL_ENTROPY_PID_FILE --retry 20
-	start-stop-daemon --stop --pidfile $RNGD_PID_FILE --retry 20 
+	start-stop-daemon --stop -s 9  --pidfile $RNGD_PID_FILE --retry 20 
 	log_end_msg $?
 }
 
