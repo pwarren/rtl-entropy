@@ -23,8 +23,6 @@ case "$1" in
     configure)
 		if [ -p $RTL_ENTROPY_FIFO ];
 			then
-				echo "$RTL_ENTROPY_FIFO already exists"	
-			else 
 				mkfifo $RTL_ENTROPY_FIFO
 		fi
 
