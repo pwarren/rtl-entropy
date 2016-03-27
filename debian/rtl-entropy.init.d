@@ -21,7 +21,15 @@ fi
 
 DESC="rtl-entropy"
 
-CHAN_RANGE=$(( ( RANDOM % 200000000 )  + 90000000 ))
+
+CHAN_RANGE_HIGH=200000000
+CHAN_RANGE_LOW=90000000
+CHAN_RANGE=0
+while [ $CHAN_RANGE -lt  $CHAN_RANGE_LOW ] || [  $CHAN_RANGE -gt $CHAN_RANGE_HIGH ]
+do
+                CHAN_RANGE=$(openssl rand 4 | od -DAn)
+done
+
 SAMPLE_RATE_RANGE=2400000
 
 RTL_ENTROPY_DAEMON=/usr/bin/rtl_entropy
