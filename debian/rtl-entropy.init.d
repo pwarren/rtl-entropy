@@ -41,6 +41,7 @@ RNGD_DAEMON_OPS=" -r $RTL_ENTROPY_FIFO_FILE -W95% "
 do_start () {
 	logger "Starting $RTL_ENTROPY_DAEMON_NAME  daemon with ops $RTL_ENTROPY_OPS"
 	start-stop-daemon -S -b  -p $RTL_ENTROPY_PID_FILE -m -a $RTL_ENTROPY_DAEMON -- $RTL_ENTROPY_OPS 
+	sleep 10
 	logger "Starting $RNGD_DAEMON_NAME daemon with ops $RNGD_DAEMON_OPS"		
 	start-stop-daemon -S -b -p $RNGD_PID_FILE  -m -a $RNGD_DAEMON -- $RNGD_DAEMON_OPS
 }
