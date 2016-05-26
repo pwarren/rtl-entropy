@@ -81,9 +81,15 @@ find_package(PkgConfig)
 find_package(LibRTLSDR)
 find_package(LibbladeRF)
 find_package(OpenSSL)
-IF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+IF(NOT ((${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD") OR
+    (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")))
   find_package(LibCAP)
-ENDIF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+ENDIF(NOT ((${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD") OR
+    (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")))
+
+IF((${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
+    set(OPENSSL_INCLUDE_DIRS /usr/local/opt/openssl/include)
+ENDIF((${CMAKE_SYSTEM_NAME} MATCHES "Darwin"))
 
 ########################################################################
 # Setup the include and linker paths
@@ -92,21 +98,25 @@ include_directories(
   ${OPENSSL_INCLUDE_DIRS}
   ${LIBRTLSDR_INCLUDE_DIRS}
 )
-IF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+IF(NOT ((${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD") OR
+    (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")))
   include_directories(
     ${LibCAP_INCLUDE_DIR}
   )
-ENDIF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+ENDIF(NOT ((${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD") OR
+    (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")))
 
 link_directories(
   ${OPENSSL_LIBRARIES}
   ${LIBRTLSDR_LIBRARIES}
 )
-IF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
-  link_directories(
-    ${LibCAP_LIBRARY}
-  )
-ENDIF(NOT (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD"))
+IF(NOT ((${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD") OR
+    (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")))
+    link_directories(
+        ${LibCAP_LIBRARY}
+    )
+ENDIF(NOT ((${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD") OR
+    (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")))
 
 add_subdirectory(src)
 
