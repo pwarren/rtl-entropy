@@ -9,9 +9,6 @@ Both of these are analog entropy sources.
 
 This software has been tested on debian linux 7.1, but should work on any linux distribution, and might run on OS X and other POSIX compliant operating systems.
 
-## Local modification
-
-* Add FreeBSD flag and remove all libcap dependencies for FreeBSD
 
 Links
 -----
@@ -103,6 +100,7 @@ To Do
 * Look at Maurier tests
 * make FIPS optional
 * directly mix in to kernel as option with daemon mode
+* fix licensing for OpenSSL
 
 Done!
 -----
@@ -114,13 +112,13 @@ Done!
 * Auto-detach kernel driver
 * Further research and consultation with security experts is needed
 * Do a release!
+* Add FreeBSD flag and remove all libcap dependencies for FreeBSD
 
 Credits
 -------
 Development supported by Star2Star communications.
 
-rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au>
-Contributions from projectgus: https://github.com/projectgus
+rtl_entropy was written by Paul Warren <pwarren@pwarren.id.au> and has contributions from many github users, please see: https://github.com/pwarren/rtl-entropy/graphs/contributors
 
 Uses code from:
 
