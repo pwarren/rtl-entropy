@@ -1,0 +1,4 @@
+rtl-entropy (1.0-1) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+ -- Matthew Weger <matthew.d.weger@gmail.com>  Sat, 26 Mar 2016 00:03:22 -0400
