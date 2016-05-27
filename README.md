@@ -100,7 +100,6 @@ To Do
 * Look at Maurier tests
 * make FIPS optional
 * directly mix in to kernel as option with daemon mode
-* fix licensing for OpenSSL
 
 Done!
 -----
@@ -113,6 +112,7 @@ Done!
 * Further research and consultation with security experts is needed
 * Do a release!
 * Add FreeBSD flag and remove all libcap dependencies for FreeBSD
+* fix licensing for OpenSSL
 
 Credits
 -------
