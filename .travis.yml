@@ -3,9 +3,15 @@ compiler:
   - gcc
   - clang
 before_script:
+  # regular ubuntu packages
+  - sudo add-apt-repository main
+  - sudo add-apt-repository universe
   - sudo apt-get -qq update
   - sudo apt-get install -y libssl-dev libcap-dev librtlsdr-dev libbladerf-dev
   - mkdir build
   - cd build
   - cmake ..
-script: make
+script:
+  - make
+  - ./src/rtl-entropy -h
+
