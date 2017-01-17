@@ -1,12 +1,11 @@
 language: c
 compiler:
- - gcc
- - clang
- before_script:
-   - sudo apt-get -qq update
-   - sudo apt-get install -y libopenssl-dev licap-dev
-   - mkdir build
-   - cd build
-   - cmake ..
+  - gcc
+  - clang
+before_script:
+  - sudo apt-get -qq update
+  - sudo apt-get install -y libopenssl-dev licap-dev
+  - mkdir build
+  - cd build
+  - cmake ..
 script: make
- 
