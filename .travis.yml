@@ -8,11 +8,11 @@ before_script:
   - sudo add-apt-repository main
   - sudo add-apt-repository universe
   - sudo apt-get -qq update
-  - sudo apt-get install -y libssl-dev libcap-dev librtlsdr-dev libbladerf-dev
+  - sudo apt-get install -y libssl-dev libcap-dev librtlsdr-dev
   - mkdir build
   - cd build
   - cmake ..
 script:
   - make
-  - ./src/rtl-entropy -h
+  - ./src/rtl_entropy -h
 
