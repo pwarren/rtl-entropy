@@ -101,7 +101,7 @@ unsigned int buffercounter = 0;
 
 /* Other bits */
 AES_KEY wctx;
-EVP_CIPHER_CTX en;
+EVP_CIPHER_CTX *en;
 
 int read_config_file (FILE * infile, char ***config_options);
 void * Alloc (size_t len);
@@ -657,14 +657,14 @@ int main(int argc, char **argv) {
 		/* use key to encrypt output */
 		/* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
 		/* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
-		aes_init(hash_buffer, sizeof(hash_buffer), &en);
+		aes_init(hash_buffer, sizeof(hash_buffer), en);
 		aes_len = sizeof(bitbuffer);
-		ciphertext = aes_encrypt(&en, bitbuffer, &aes_len);
+		ciphertext = aes_encrypt(en, bitbuffer, &aes_len);
 		/* yay, send it to the output! */
 		fwrite(ciphertext,sizeof(ciphertext[0]),aes_len,output);
 		/* Clean up */
 		free(ciphertext);
-		EVP_CIPHER_CTX_cleanup(&en);
+		EVP_CIPHER_CTX_cleanup(en);
 	      }
 	    } else { 
 	      /* xor with old data */

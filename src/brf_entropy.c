@@ -58,6 +58,12 @@
 #include <sys/prctl.h>
 #endif
 
+#if defined(BLADERF_FORMAT_SC16_Q12)
+#define BLADERF_FORMAT BLADERF_FORMAT_SC16_Q12
+#else
+#define BLADERF_FORMAT BLADERF_FORMAT_SC16_Q11
+#endif
+
 #include <pthread.h>
 #include <libbladeRF.h>
 #include "fips.h"
@@ -101,7 +107,7 @@ unsigned int buffercounter = 0;
 
 /* Other bits */
 AES_KEY wctx;
-EVP_CIPHER_CTX en;
+EVP_CIPHER_CTX *en;
 
 void usage(void) {
   fprintf(stderr,
@@ -282,14 +288,14 @@ static void *rx_stream_callback(struct bladerf *dev,
 	      /* use key to encrypt output */
 	      /* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
 	      /* AES_encrypt(bitbuffer, bitbuffer_old, &wctx); */
-	      aes_init(hash_buffer, sizeof(hash_buffer), &en);
+	      aes_init(hash_buffer, sizeof(hash_buffer), en);
 	      aes_len = sizeof(bitbuffer);
-	      ciphertext = aes_encrypt(&en, bitbuffer, &aes_len);
+	      ciphertext = aes_encrypt(en, bitbuffer, &aes_len);
 	      /* yay, send it to the output! */
 	      fwrite(ciphertext,sizeof(ciphertext[0]),aes_len,output);
 	      /* Clean up */
 	      free(ciphertext);
-	      EVP_CIPHER_CTX_cleanup(&en);
+	      EVP_CIPHER_CTX_cleanup(en);
 	    }
 	  } else {
 	    /* xor with old data */
@@ -446,17 +452,17 @@ int main(int argc, char **argv) {
   }
  
   /*  Initialise the receive stream */
+
   r = bladerf_init_stream(&rx_stream,
 			  dev,
 			  rx_stream_callback,
 			  &buffers,
 			  32,
-			  BLADERF_FORMAT_SC16_Q11,
+			  BLADERF_FORMAT,
 			  samples_per_buffer,
 			  32,
 			  NULL);
-  
-  
+
   log_line(LOG_DEBUG, "Doing FIPS init");
   fips_init(&fipsctx, (int)0);
 
