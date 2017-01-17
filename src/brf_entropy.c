@@ -58,12 +58,6 @@
 #include <sys/prctl.h>
 #endif
 
-#if defined(BLADERF_FORMAT_SC16_Q12)
-#define BLADERF_FORMAT BLADERF_FORMAT_SC16_Q12
-#else
-#define BLADERF_FORMAT BLADERF_FORMAT_SC16_Q11
-#endif
-
 #include <pthread.h>
 #include <libbladeRF.h>
 #include "fips.h"
@@ -458,7 +452,7 @@ int main(int argc, char **argv) {
 			  rx_stream_callback,
 			  &buffers,
 			  32,
-			  BLADERF_FORMAT,
+			  BLADERF_FORMAT_SC16_Q11,
 			  samples_per_buffer,
 			  32,
 			  NULL);
