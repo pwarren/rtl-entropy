@@ -1,0 +1,64 @@
+.TH RTL_ENTROPY "1" "January 2018" "User Commands"
+.SH NAME
+rtl_entropy \- manual page for rtl_entropy command.
+.SH SYNOPSIS
+.B rtl_entropy
+[\fI\,options\/\fR]
+.SH DESCRIPTION
+.PP
+rtl_entropy, a high quality entropy source using RTL2832 based DVB\-T receivers
+.SH OPTIONS
+\fB\-a\fR Set gain (default: max for dongle)
+.HP
+\fB\-d\fR Device index (default: 0)
+.HP
+\fB\-e\fR Encrypt output
+.HP
+\fB\-f\fR Set frequency to listen (default: 70MHz )
+.HP
+\fB\-s\fR Samplerate (default: 3200000 Hz)
+.HP
+\fB\-o\fR Output file (default: STDOUT, \fI\,/var/run/rtl_entropy.fifo\/\fP for daemon mode (\fB\-b\fR))
+.HP
+\fB\-p\fR PID file (default: \fI\,/var/run/rtl_entropy.pid\/\fP)
+.HP
+\fB\-b\fR Daemonize
+.HP
+\fB\-u\fR User to run as (default: rtl_entropy)
+.HP
+\fB\-g\fR Group to run as (default: rtl_entropy)
+.TP
+\fB\-\-config_file\fR,   \fB\-c\fR []
+Configuration file (defaults: \fI\,/etc/rtl_entropy.conf\/\fP, \fI\,/etc/sysconfig/rtl_entropy.conf\/\fP)
+.TP
+\fB\-\-device_idx\fR,    \fB\-d\fR []
+Device index (default: 0)
+.TP
+\fB\-\-encrpyt\fR,       \fB\-e\fR
+Encrypt output
+.TP
+\fB\-\-frequency\fR,     \fB\-f\fR []
+Set frequency to listen (default: 70000000 MHz)
+.TP
+\fB\-\-group\fR,         \fB\-g\fR []
+Group to run as (default: rtl_entropy)
+.TP
+\fB\-\-pid_file\fR,      \fB\-p\fR []
+PID file (default: \fI\,/var/run/rtl_entropy.pid\/\fP)
+.TP
+\fB\-\-user\fR,          \fB\-u\fR []
+User to run as (default: rtl_entropy)
+.TP
+\fB\-\-help\fR,          \fB\-h\fR
+This help. (Default no)
+.TP
+\fB\-\-output_file\fR,   \fB\-o\fR []
+Output file (default: STDOUT, \fI\,/var/run/rtl_entropy.fifo\/\fP for daemon mode (\fB\-b\fR))
+.TP
+\fB\-\-quiet\fR,         \fB\-q\fR []
+quiet level, how much output to print, 0\-3 (default: 0, print all)
+.TP
+\fB\-\-sample_rate\fR,   \fB\-s\fR []
+Samplerate (default: 3200000 Hz)
+.IP
+Configuration file at /etc/{,sysconfig/}rtl_entropy has more detail and sample values.
