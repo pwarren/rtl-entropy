@@ -1,7 +1,7 @@
 rtl-entropy
 ===========
 
-rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing, runs it through the FIPS 140-2 tests, then optionally (-e) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
+rtl-entropy is software using rtl-sdr to turn your DVB-T dongle into a high quality entropy source. It samples atmospheric noise, does Von-Neumann debiasing, runs it through the FIPS 140-2 tests, then optionally (`-e`) does Kaminsky debiasing if it passes the FIPS tests, then writes to the output. It can be run as a Daemon which by default writes to a FIFO, which can be read by rngd to add entropy to the system pool.
 
 If you're serious about the cryptographic security of your entropy source, you should probably short, or put a 75 Ohm load on the antenna port, and put the whole assembly in a shielded box. Then you're getting entropy from the thermal noise of the amplifiers which is much harder to interfere with than atmospheric radio. 
 
@@ -20,76 +20,69 @@ Dependencies
 ------------
 
 * [rtl-sdr](http://sdr.osmocom.org/trac/wiki/rtl-sdr)
-* libcap - 'apt-get install libcap-dev' or equivalent on your platform.
+* libcap - `apt-get install libcap-dev` or equivalent on your platform.
 * openssl
 * pkg-config
 
-Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: -DDETACH_KERNEL_DRIVER
+Note: If you want rtl-sdr to automatically detach the kernel driver, compile it with the cmake flag: `-DDETACH_KERNEL_DRIVER`
 
 eg:
-
+```
 cd ~/rtl-sdr
-
 mkdir build
-
 cd build
-
 cmake ../ -DDETACH_KERNEL_DRIVER
+```
 
 then install as normal.
 
 Installation
 ------------
-
+```
 git clone https://github.com/pwarren/rtl-entropy/
-
 cd rtl-entropy
-
 mkdir build
-
 cd build 
-
 cmake ../
-
 make 
-
 sudo make install
-
+```
 
 You can also do:
-
+```
 sudo make uninstall
-
+```
 Usage
 -----
-
+```
 ./rtl_entropy > high_entropy.bin
+```
 and press CTRL+C to stop, and do whatever you like with it.
 
 or
-
+```
 ./rtl_entropy -s 2.4M -f 101.5M -e | rngtest -c 1280 -p > high_entropy.bin
-
+```
 to set the sample rate to 2.4Msamples/s. the frequency to tune to as 101.5 MHz and do kaminsky debiasing (encryption), piped to rngtest which checks 1280 runs and stores it in high_entropy.bin
 
 
 Please see the output of 
-
+```
 rtl-entropy -h
-
+```
 for further help!
 
 
 
 For Daemon mode, along with rngd from rng-tools on linux:
-
+```
 rtl_entropy -b
-
 rngd -r /var/run/rtl_entropy.fifo -W95%
+```
 
-The daemon mode by default uses /var/run/rtl_entropy.fifo for output and /var/run/rtl_entropy.pid for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximize performance.
+The daemon mode by default uses `/var/run/rtl_entropy.fifo` for output and `/var/run/rtl_entropy.pid` for it's PID file. You may want to tweak the size of your entropy pool, and explore other options for rngd to maximize performance.
 
-If you specify an output file with -o, rtl_entropy will open not attempt to create a FIFO, but will just open the file for writing.
+If you specify an output file with `-o`, rtl_entropy will open not attempt to create a FIFO, but will just open the file for writing.
 
 To Do
 -----
@@ -144,13 +137,13 @@ Happy for someone to correct me and justify why you should never use this for re
 
 Performance Testing
 -------------------
-
+```
 rtl_entropy | rngtest -c 4096
-
+```
 on my core i5 1.8GHz Macbook Air 5,2 running debian 7.1
 
 Least Significant bits: average bits/s from rngtest, failure count.
-Averaged over 5 runs. 
+Averaged over 5 runs.  
 
 2: 2577.507, 2
 
