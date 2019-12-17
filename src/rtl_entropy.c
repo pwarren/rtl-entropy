@@ -529,8 +529,14 @@ int main(int argc, char **argv) {
   if (gflags_quiet < 3)
     log_line(LOG_DEBUG, "Found %d device(s):", device_count);
   for (i = 0; i <(unsigned int)device_count; i++)
-  { if (gflags_quiet < 3)
-      log_line(LOG_DEBUG, "  %d:  %s", i, rtlsdr_get_device_name(i));
+  {
+    char* manufacturer[256], product[256], serial[256];
+    rtlsdr_get_device_usb_strings(i,
+					     manufacturer,
+					     product,
+					     serial);
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "  %d:  %s %s %s %s", i, rtlsdr_get_device_name(i), manufacturer, product, serial);
   }
 
   if (dev_serial) {
