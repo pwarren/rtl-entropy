@@ -72,6 +72,7 @@ static int do_exit = 0;
 static rtlsdr_dev_t *dev = NULL;
 static fips_ctx_t fipsctx;		/* Context for the FIPS tests */
 uint32_t dev_index = 0;
+char* dev_serial = NULL;
 uint32_t samp_rate = DEFAULT_SAMPLE_RATE;
 uint32_t frequency = DEFAULT_FREQUENCY;
 int opt = 0;
@@ -114,6 +115,7 @@ void usage(void) {
 	  "Usage: rtl_entropy [options]\n"
 	  "\t-a Set gain (default: max for dongle)\n"
 	  "\t-d Device index (default: 0)\n"
+	  "\t-D Device serial identifier\n"
 	  "\t-e Encrypt output\n"
 	  "\t-f Set frequency to listen (default: 70MHz )\n"
 	  "\t-s Samplerate (default: 3200000 Hz)\n");
@@ -129,6 +131,7 @@ void usage(void) {
   // Long options
   fprintf(stderr, "\t--config_file,   -c []  Configuration file (defaults: /etc/rtl_entropy.conf, /etc/sysconfig/rtl_entropy.conf)\n");
   fprintf(stderr, "\t--device_idx,    -d []  Device index (default: %i)\n", dev_index);
+  fprintf(stderr, "\t--device_serial, -D []  Specific serial identifier of device instead of index\n");
   fprintf(stderr, "\t--encrpyt,       -e     Encrypt output\n");
   fprintf(stderr, "\t--frequency,     -f []  Set frequency to listen (default: %i MHz)\n", frequency);
 #if !(defined(__APPLE__) || defined(__FreeBSD__))
@@ -153,6 +156,7 @@ void parse_args(int argc, char ** argv)
     {"daemonize",  0, NULL, 'b' },
     {"config_file",  1, NULL, 'c' },
     {"device_idx",  1, NULL, 'd' },
+    {"device_serial",  1, NULL, 'D' },
     {"encrypt",  0, NULL, 'e' },
     {"frequency", 1, NULL, 'f' },
     {"group", 1, NULL, 'g' },
@@ -165,7 +169,7 @@ void parse_args(int argc, char ** argv)
     {NULL,    0, NULL, 0   }
   };
 
-  char *arg_string= "a:bc:d:ef:g:ho:p:q:s:u:";
+  char *arg_string= "a:bc:d:D:ef:g:ho:p:q:s:u:";
     
   optind = 1;  // start at 1 in argv, allows reuse 
   while(1)
@@ -190,6 +194,10 @@ void parse_args(int argc, char ** argv)
         
       case 'd':
         dev_index = atoi(optarg);
+        break;
+
+      case 'D':
+        dev_serial = (char *) StrnDup (optarg);
         break;
 
       case 'e':
@@ -521,12 +529,26 @@ int main(int argc, char **argv) {
   if (gflags_quiet < 3)
     log_line(LOG_DEBUG, "Found %d device(s):", device_count);
   for (i = 0; i <(unsigned int)device_count; i++)
-  { if (gflags_quiet < 3)
-      log_line(LOG_DEBUG, "  %d:  %s", i, rtlsdr_get_device_name(i));
+  {
+    char* manufacturer[256], product[256], serial[256];
+    rtlsdr_get_device_usb_strings(i,
+					     manufacturer,
+					     product,
+					     serial);
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "  %d:  %s %s %s %s", i, rtlsdr_get_device_name(i), manufacturer, product, serial);
   }
-  if (gflags_quiet < 3)
-    log_line(LOG_DEBUG, "Using device %d: %s", dev_index,
-	   rtlsdr_get_device_name(dev_index));
+
+  if (dev_serial) {
+    dev_index = rtlsdr_get_index_by_serial(dev_serial);
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "Using device %d: %s by serial number %s", dev_index,
+	    rtlsdr_get_device_name(dev_index), dev_serial);
+  } else {
+    if (gflags_quiet < 3)
+      log_line(LOG_DEBUG, "Using device %d: %s", dev_index,
+        rtlsdr_get_device_name(dev_index));
+  }
   
   r = rtlsdr_open(&dev, dev_index);
   if (r < 0) {
