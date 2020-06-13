@@ -68,7 +68,7 @@ to set the sample rate to 2.4Msamples/s. the frequency to tune to as 101.5 MHz a
 
 Please see the output of 
 ```
-rtl-entropy -h
+rtl_entropy -h
 ```
 for further help!
 
