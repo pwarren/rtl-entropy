@@ -145,7 +145,6 @@ void usage(void) {
   fprintf(stderr, "\t--sample_rate,   -s []  Samplerate (default: %i Hz)\n", samp_rate);
   fprintf(stderr, "\tSee the default configuration file for more details and sample values.\n");
   fprintf(stderr, "\n");
-  exit(EXIT_SUCCESS);
 }
 
 
@@ -214,6 +213,7 @@ void parse_args(int argc, char ** argv)
         
       case 'h':
         usage();
+        exit(EXIT_SUCCESS);
         break;
         
       case 'o':
@@ -243,7 +243,7 @@ void parse_args(int argc, char ** argv)
       default:
         fprintf(stderr, "Invalid commandline options.\n\n");
         usage();
-        exit(1);
+        exit(EXIT_FAILURE);
         break;
     }
   }
