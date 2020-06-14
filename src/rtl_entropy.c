@@ -674,7 +674,7 @@ int main(int argc, char **argv) {
 	  if (!fips_result) {
 	    if (gflags_encryption != 0) {
 	      if (hash_loop) {
-		/*   /\* Get a key from disacarded bits *\/ */
+		/* Get a key from discarded bits */
 		SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);
 		/* use key to encrypt output */
 		/* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
@@ -710,7 +710,6 @@ int main(int argc, char **argv) {
 	    }
 	  }
 	  /* reset buffers, and the counter */
-	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;
 	}
