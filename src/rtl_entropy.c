@@ -113,36 +113,33 @@ void usage(void) {
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage: rtl_entropy [options]\n"
-	  "\t-a Set gain (default: max for dongle)\n"
-	  "\t-d Device index (default: 0)\n"
-	  "\t-D Device serial identifier\n"
-	  "\t-e Encrypt output\n"
-	  "\t-f Set frequency to listen (default: 70MHz )\n"
-	  "\t-s Samplerate (default: 3200000 Hz)\n");
-  fprintf(stderr,
-	  "\t-o Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
-#if !(defined(__APPLE__) || defined(__FreeBSD__))
-	  "\t-p PID file (default: /var/run/rtl_entropy.pid)\n"
-	  "\t-b Daemonize\n"
-	  "\t-u User to run as (default: rtl_entropy)\n"
-	  "\t-g Group to run as (default: rtl_entropy)\n"
-#endif
 	  );
   // Long options
+  fprintf(stderr, "\t--amplify        -a []  Set gain (default: max for dongle)\n");
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
+  fprintf(stderr, "\t--daemonize,     -b     Daemonize (run in background)\n");
+#endif
   fprintf(stderr, "\t--config_file,   -c []  Configuration file (defaults: /etc/rtl_entropy.conf, /etc/sysconfig/rtl_entropy.conf)\n");
   fprintf(stderr, "\t--device_idx,    -d []  Device index (default: %i)\n", dev_index);
   fprintf(stderr, "\t--device_serial, -D []  Specific serial identifier of device instead of index\n");
   fprintf(stderr, "\t--encrypt,       -e     Encrypt output\n");
-  fprintf(stderr, "\t--frequency,     -f []  Set frequency to listen (default: %i Hz)\n", frequency);
+  fprintf(stderr, "\t--frequency,     -f []  Set frequency to listen (default: %i Hz);\n"
+	          "\t                        Permissible suffixes are none, 'k', 'M', and 'G'\n", frequency);
 #if !(defined(__APPLE__) || defined(__FreeBSD__))
   fprintf(stderr, "\t--group,         -g []  Group to run as (default: rtl_entropy)\n");
-  fprintf(stderr, "\t--pid_file,      -p []  PID file (default: /var/run/rtl_entropy.pid)\n");
-  fprintf(stderr, "\t--user,          -u []  User to run as (default: rtl_entropy)\n");
 #endif
   fprintf(stderr, "\t--help,          -h     This help text (default: no)\n");
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
   fprintf(stderr, "\t--output_file,   -o []  Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n");
+  fprintf(stderr, "\t--pid_file,      -p []  PID file (default: /var/run/rtl_entropy.pid)\n");
+#else
+  fprintf(stderr, "\t--output_file,   -o []  Output file (default: STDOUT)\n");
+#endif
   fprintf(stderr, "\t--quiet,         -q []  Quiet level, how much output to print, 0-3 (default: %i, print all)\n", gflags_quiet);
   fprintf(stderr, "\t--sample_rate,   -s []  Samplerate (default: %i Hz)\n", samp_rate);
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
+  fprintf(stderr, "\t--user,          -u []  User to run as (default: rtl_entropy)\n");
+#endif
   fprintf(stderr, "\tSee the default configuration file for more details and sample values.\n");
   fprintf(stderr, "\n");
 }
