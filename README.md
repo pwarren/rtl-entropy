@@ -1,3 +1,11 @@
+Abandoned
+=========
+
+This project is abandoned. Use a [OneRNG](https://onerng.info/) or a [ChaosKey](https://altusmetrum.org/ChaosKey/) instead.
+
+This code will stay here and go read only.
+
+
 rtl-entropy
 ===========
 
