@@ -113,39 +113,35 @@ void usage(void) {
   fprintf(stderr,
 	  "rtl_entropy, a high quality entropy source using RTL2832 based DVB-T receivers\n\n"
 	  "Usage: rtl_entropy [options]\n"
-	  "\t-a Set gain (default: max for dongle)\n"
-	  "\t-d Device index (default: 0)\n"
-	  "\t-D Device serial identifier\n"
-	  "\t-e Encrypt output\n"
-	  "\t-f Set frequency to listen (default: 70MHz )\n"
-	  "\t-s Samplerate (default: 3200000 Hz)\n");
-  fprintf(stderr,
-	  "\t-o Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n"
-#if !(defined(__APPLE__) || defined(__FreeBSD__))
-	  "\t-p PID file (default: /var/run/rtl_entropy.pid)\n"
-	  "\t-b Daemonize\n"
-	  "\t-u User to run as (default: rtl_entropy)\n"
-	  "\t-g Group to run as (default: rtl_entropy)\n"
-#endif
 	  );
   // Long options
+  fprintf(stderr, "\t--amplify        -a []  Set gain (default: max for dongle)\n");
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
+  fprintf(stderr, "\t--daemonize,     -b     Daemonize (run in background)\n");
+#endif
   fprintf(stderr, "\t--config_file,   -c []  Configuration file (defaults: /etc/rtl_entropy.conf, /etc/sysconfig/rtl_entropy.conf)\n");
   fprintf(stderr, "\t--device_idx,    -d []  Device index (default: %i)\n", dev_index);
   fprintf(stderr, "\t--device_serial, -D []  Specific serial identifier of device instead of index\n");
-  fprintf(stderr, "\t--encrpyt,       -e     Encrypt output\n");
-  fprintf(stderr, "\t--frequency,     -f []  Set frequency to listen (default: %i MHz)\n", frequency);
+  fprintf(stderr, "\t--encrypt,       -e     Encrypt output\n");
+  fprintf(stderr, "\t--frequency,     -f []  Set frequency to listen (default: %i Hz);\n"
+	          "\t                        Permissible suffixes are none, 'k', 'M', and 'G'\n", frequency);
 #if !(defined(__APPLE__) || defined(__FreeBSD__))
   fprintf(stderr, "\t--group,         -g []  Group to run as (default: rtl_entropy)\n");
+#endif
+  fprintf(stderr, "\t--help,          -h     This help text (default: no)\n");
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
+  fprintf(stderr, "\t--output_file,   -o []  Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n");
   fprintf(stderr, "\t--pid_file,      -p []  PID file (default: /var/run/rtl_entropy.pid)\n");
+#else
+  fprintf(stderr, "\t--output_file,   -o []  Output file (default: STDOUT)\n");
+#endif
+  fprintf(stderr, "\t--quiet,         -q []  Quiet level, how much output to print, 0-3 (default: %i, print all)\n", gflags_quiet);
+  fprintf(stderr, "\t--sample_rate,   -s []  Samplerate (default: %i Hz)\n", samp_rate);
+#if !(defined(__APPLE__) || defined(__FreeBSD__))
   fprintf(stderr, "\t--user,          -u []  User to run as (default: rtl_entropy)\n");
 #endif
-  fprintf(stderr, "\t--help,          -h     This help. (Default no)\n");
-  fprintf(stderr, "\t--output_file,   -o []  Output file (default: STDOUT, /var/run/rtl_entropy.fifo for daemon mode (-b))\n");
-  fprintf(stderr, "\t--quiet,         -q []  quiet level, how much output to print, 0-3 (default: %i, print all)\n", gflags_quiet);
-  fprintf(stderr, "\t--sample_rate,   -s []  Samplerate (default: %i Hz)\n", samp_rate);
-  fprintf(stderr, "\tConfiguration file at /etc/{,sysconfig/}rtl_entropy has more detail and sample values.\n");
+  fprintf(stderr, "\tSee the default configuration file for more details and sample values.\n");
   fprintf(stderr, "\n");
-  exit(EXIT_SUCCESS);
 }
 
 
@@ -214,6 +210,7 @@ void parse_args(int argc, char ** argv)
         
       case 'h':
         usage();
+        exit(EXIT_SUCCESS);
         break;
         
       case 'o':
@@ -243,7 +240,7 @@ void parse_args(int argc, char ** argv)
       default:
         fprintf(stderr, "Invalid commandline options.\n\n");
         usage();
-        exit(1);
+        exit(EXIT_FAILURE);
         break;
     }
   }
@@ -674,7 +671,7 @@ int main(int argc, char **argv) {
 	  if (!fips_result) {
 	    if (gflags_encryption != 0) {
 	      if (hash_loop) {
-		/*   /\* Get a key from disacarded bits *\/ */
+		/* Get a key from discarded bits */
 		SHA512(hash_data_buffer, sizeof(hash_data_buffer), hash_buffer);
 		/* use key to encrypt output */
 		/* AES_set_encrypt_key(hash_buffer, 128, &wctx); */
@@ -710,7 +707,6 @@ int main(int argc, char **argv) {
 	    }
 	  }
 	  /* reset buffers, and the counter */
-	  /* memset(bitbuffer_old,0,sizeof(bitbuffer_old)); */
 	  memset(bitbuffer,0,sizeof(bitbuffer));
 	  buffercounter = 0;
 	}

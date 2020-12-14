@@ -1,4 +1,4 @@
-.TH RTL_ENTROPY "1" "January 2018" "User Commands"
+.TH RTL_ENTROPY "1" "June 2020" "User Commands"
 .SH NAME
 rtl_entropy \- manual page for rtl_entropy command.
 .SH SYNOPSIS
@@ -8,25 +8,13 @@ rtl_entropy \- manual page for rtl_entropy command.
 .PP
 rtl_entropy, a high quality entropy source using RTL2832 based DVB\-T receivers
 .SH OPTIONS
-\fB\-a\fR Set gain (default: max for dongle)
-.HP
-\fB\-d\fR Device index (default: 0)
-.HP
-\fB\-e\fR Encrypt output
-.HP
-\fB\-f\fR Set frequency to listen (default: 70MHz )
-.HP
-\fB\-s\fR Samplerate (default: 3200000 Hz)
-.HP
-\fB\-o\fR Output file (default: STDOUT, \fI\,/var/run/rtl_entropy.fifo\/\fP for daemon mode (\fB\-b\fR))
-.HP
-\fB\-p\fR PID file (default: \fI\,/var/run/rtl_entropy.pid\/\fP)
-.HP
-\fB\-b\fR Daemonize
-.HP
-\fB\-u\fR User to run as (default: rtl_entropy)
-.HP
-\fB\-g\fR Group to run as (default: rtl_entropy)
+.TP
+\fB\-\-amplify\fR,       \fB\-a\fR []
+Set gain (default: max for dongle)
+.TP
+\fB\-\-daemonize\fR,     \fB\-b\fR []
+Daemonize (run in background).
+NOTE: This option is not available on Mac OS X or FreeBSD systems
 .TP
 \fB\-\-config_file\fR,   \fB\-c\fR []
 Configuration file (defaults: \fI\,/etc/rtl_entropy.conf\/\fP, \fI\,/etc/sysconfig/rtl_entropy.conf\/\fP)
@@ -34,31 +22,39 @@ Configuration file (defaults: \fI\,/etc/rtl_entropy.conf\/\fP, \fI\,/etc/sysconf
 \fB\-\-device_idx\fR,    \fB\-d\fR []
 Device index (default: 0)
 .TP
-\fB\-\-encrpyt\fR,       \fB\-e\fR
+\fB\-\-device_serial\fR, \fB\-D\fR []
+Specific serial identifier of device instead of index
+.TP
+\fB\-\-encrypt\fR,       \fB\-e\fR
 Encrypt output
 .TP
 \fB\-\-frequency\fR,     \fB\-f\fR []
-Set frequency to listen (default: 70000000 MHz)
-.TP
-\fB\-\-group\fR,         \fB\-g\fR []
-Group to run as (default: rtl_entropy)
-.TP
-\fB\-\-pid_file\fR,      \fB\-p\fR []
-PID file (default: \fI\,/var/run/rtl_entropy.pid\/\fP)
-.TP
-\fB\-\-user\fR,          \fB\-u\fR []
-User to run as (default: rtl_entropy)
+Set frequency to listen (default: 70 MHz).
+Permissible suffixes are none, 'k', 'M', and 'G'
 .TP
 \fB\-\-help\fR,          \fB\-h\fR
-This help. (Default no)
+Show help
+.TP
+\fB\-\-group\fR,         \fB\-g\fR []
+Group to run as (default: rtl_entropy).
+NOTE: This option is not available on Mac OS X or FreeBSD systems
 .TP
 \fB\-\-output_file\fR,   \fB\-o\fR []
 Output file (default: STDOUT, \fI\,/var/run/rtl_entropy.fifo\/\fP for daemon mode (\fB\-b\fR))
+.TP
+\fB\-\-pid_file\fR,      \fB\-p\fR []
+PID file (default: \fI\,/var/run/rtl_entropy.pid\/\fP).
+NOTE: This option is not available on Mac OS X or FreeBSD systems
 .TP
 \fB\-\-quiet\fR,         \fB\-q\fR []
 quiet level, how much output to print, 0\-3 (default: 0, print all)
 .TP
 \fB\-\-sample_rate\fR,   \fB\-s\fR []
-Samplerate (default: 3200000 Hz)
+Samplerate (default: 32 MHz).
+Permissible suffixes are none, 'k', 'M', and 'G'
+.TP
+\fB\-\-user\fR,          \fB\-u\fR []
+User to run as (default: rtl_entropy).
+NOTE: This option is not available on Mac OS X or FreeBSD systems
 .IP
 Configuration file at /etc/{,sysconfig/}rtl_entropy has more detail and sample values.
